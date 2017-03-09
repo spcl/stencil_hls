@@ -81,5 +81,5 @@ if (NOT STENCIL_USE_SINGLE_DIMM)
 endif()
 add_custom_target(kernel
   COMMAND ${SDACCEL_XOCC} -t hw ${STENCIL_XOCC_FLAGS}
-  -o ${KERNEL_FILENAME}.xclbin
+  -o sdaccel_hw.xclbin
   DEPENDS ${STENCIL_HLS_DEPENDS})

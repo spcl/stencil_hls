@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include "hlslib/DataPack.h"
 
 using Data_t = ${STENCIL_DATA_TYPE};
