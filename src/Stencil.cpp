@@ -121,8 +121,10 @@ void Compute(hlslib::Stream<DataPack> &pipeIn, hlslib::Stream<DataPack> &pipeOut
   DataPack shiftCenter(kBoundary);
 
 ComputeFlat:
-  for (int i = 0;
-       i < kTimeFolded * kBlocks * kRows * kInputWidth + kInputWidth - 1; ++i) {
+  for (long i = 0;
+       i < static_cast<long>(kTimeFolded) * kBlocks * kRows * kInputWidth +
+               kInputWidth - 1;
+       ++i) {
     #pragma HLS PIPELINE
 
 #ifdef STENCIL_KERNEL_DEBUG

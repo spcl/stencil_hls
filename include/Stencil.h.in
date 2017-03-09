@@ -5,20 +5,20 @@
 
 using Data_t = ${STENCIL_DATA_TYPE};
 
-constexpr int kDataWidth = ${STENCIL_DATA_WIDTH};
-constexpr int kPipeDepth = 4;
-constexpr int kRows = ${STENCIL_ROWS};
-constexpr int kTotalCols = ${STENCIL_COLS};
-constexpr int kCols = kTotalCols / kDataWidth;
-constexpr int kDepth = ${STENCIL_DEPTH};
-constexpr int kHalo = (kDataWidth + kDepth - 1) / kDataWidth;
-constexpr int kBlocks = ${STENCIL_BLOCKS};
-constexpr int kTime = ${STENCIL_TIME};
-constexpr int kColsPerBlock = kCols / kBlocks;
-constexpr int kReadSize = 2 * (kColsPerBlock + kHalo) * kRows +
+constexpr long kDataWidth = ${STENCIL_DATA_WIDTH};
+constexpr long kPipeDepth = 4;
+constexpr long kRows = ${STENCIL_ROWS};
+constexpr long kTotalCols = ${STENCIL_COLS};
+constexpr long kCols = kTotalCols / kDataWidth;
+constexpr long kDepth = ${STENCIL_DEPTH};
+constexpr long kHalo = (kDataWidth + kDepth - 1) / kDataWidth;
+constexpr long kBlocks = ${STENCIL_BLOCKS};
+constexpr long kTime = ${STENCIL_TIME};
+constexpr long kColsPerBlock = kCols / kBlocks;
+constexpr long kReadSize = 2 * (kColsPerBlock + kHalo) * kRows +
                           (kBlocks - 2) * (kColsPerBlock + 2 * kHalo) * kRows;
-constexpr int kWriteSize = kRows * kCols;
-constexpr int kTimeFolded = kTime / kDepth;
+constexpr long kWriteSize = kRows * kCols;
+constexpr long kTimeFolded = kTime / kDepth;
 constexpr Data_t kBoundary = 1;
 
 using DataPack = hlslib::DataPack<Data_t, kDataWidth>;

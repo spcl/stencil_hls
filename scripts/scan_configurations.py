@@ -54,7 +54,7 @@ class Configuration(object):
 
 def cmake_command(conf, options=""):
   timesteps = 256 * conf.depth
-  dim = conf.tileSize * 8
+  dim = conf.tileSize * 4 * conf.width
   return ("cmake ../../ " + " ".join(options) +
           " -DSTENCIL_KEEP_INTERMEDIATE=ON" +
           " -DSTENCIL_TARGET_CLOCK={}".format(conf.targetClock) +

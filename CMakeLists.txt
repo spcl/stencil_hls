@@ -34,7 +34,7 @@ find_package(Threads REQUIRED)
 set(STENCIL_LIBS ${SDACCEL_LIBS})
 
 # Compilation flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -ftemplate-depth-1024")
 
 # Target dependencies 
 set(STENCIL_HLS_DEPENDS
@@ -78,6 +78,9 @@ if (NOT STENCIL_USE_SINGLE_DIMM)
       --xp misc:map_connect=add.kernel.Kernel_1.M_AXI_GMEM0.core.OCL_REGION_0.M00_AXI
       --xp misc:map_connect=add.kernel.Kernel_1.M_AXI_GMEM1.core.OCL_REGION_0.M01_AXI
       --max_memory_ports all)
+endif()
+if (STENCIL_KEEP_INTERMEDIATE)
+  set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS} -s)
 endif()
 add_custom_target(kernel
   COMMAND ${SDACCEL_XOCC} -t hw ${STENCIL_XOCC_FLAGS}
