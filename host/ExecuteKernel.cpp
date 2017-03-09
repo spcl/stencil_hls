@@ -36,7 +36,7 @@ int main(int argc, char **) {
     auto device1 = context.MakeBuffer<DataPack, hlslib::ocl::Access::readWrite>(
         hlslib::ocl::MemoryBank::bank0, memory1.cbegin(), memory1.cend());
     auto kernel = context.MakeKernelFromBinary(
-        "kernel.xclbin", "Kernel", device0, device1, device0, device1);
+        "sdaccel_hw.xclbin", "Kernel", device0, device1, device0, device1);
     std::cout << "Executing kernel..." << std::flush;
     std::cout << " Finished in " << kernel.ExecuteTask() << " seconds."
               << std::endl;
