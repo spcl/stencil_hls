@@ -216,8 +216,12 @@ ComputeFlat:
   ComputeSIMD:
     for (int w = 0; w < kDataWidth; ++w) {
       #pragma HLS UNROLL
-      result[w] =
-          static_cast<Data_t>(0.25) * (north[w] + west[w] + east[w] + south[w]);
+      const Data_t northVal = north[w];
+      const Data_t westVal = west[w];
+      const Data_t eastVal = east[w];
+      const Data_t southVal = south[w];
+      const Data_t factor = 0.25;
+      result[w] = factor * (northVal + westVal + eastVal + southVal);
     }
 
     // Only output values if the next unit needs them

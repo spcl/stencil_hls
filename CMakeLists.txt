@@ -61,7 +61,7 @@ add_test(Testbench Testbench)
 
 # SDAccel
 add_executable(ExecuteKernel host/ExecuteKernel.cpp)
-target_link_libraries(ExecuteKernel ${STENCIL_LIBS})
+target_link_libraries(ExecuteKernel ${STENCIL_LIBS} ${SDACCEL_LIBS})
 set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS} 
   # Includes
   -I${CMAKE_BINARY_DIR}
