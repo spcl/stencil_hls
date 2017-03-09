@@ -1,8 +1,8 @@
 open_project Stencil 
 open_solution ${STENCIL_PART_NAME}  
 set_part ${STENCIL_PART_NAME} 
-add_files -cflags "-DHLSLIB_SYNTHESIS -DSTENCIL_SYNTHESIS ${CMAKE_CXX_FLAGS} -I${CMAKE_SOURCE_DIR} -I${CMAKE_BINARY_DIR}" "${CMAKE_SOURCE_DIR}/src/Stencil.cpp" 
+add_files -cflags "-DHLSLIB_SYNTHESIS -DSTENCIL_SYNTHESIS ${CMAKE_CXX_FLAGS} -I${CMAKE_SOURCE_DIR}/include -I${CMAKE_BINARY_DIR}" "${CMAKE_SOURCE_DIR}/src/Stencil.cpp" 
 set_top Kernel 
-create_clock -period ${STENCIL_HLS_TARGET_TIMING} -name default
+create_clock -period ${STENCIL_TARGET_TIMING} -name default
 csynth_design
 exit

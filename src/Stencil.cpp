@@ -2,7 +2,7 @@
 #include "hlslib/Utility.h"
 #include "Stencil.h"
 #include <cassert>
-#ifndef SDACCEL_TEST_SYNTHESIS
+#ifndef STENCIL_SYNTHESIS
 #include <thread>
 #endif
 
@@ -100,7 +100,7 @@ void Compute(hlslib::Stream<DataPack> &pipeIn, hlslib::Stream<DataPack> &pipeOut
 
   // The typedef seems to break the high level synthesis tool when applying
   // pragmas
-#ifndef SDACCEL_TEST_SYNTHESIS 
+#ifndef STENCIL_SYNTHESIS 
   hlslib::Stream<DataPack> northBuffer("northBuffer");
   hlslib::Stream<DataPack> centerBuffer("centerBuffer");
 #else
@@ -125,7 +125,7 @@ ComputeFlat:
        i < kTimeFolded * kBlocks * kRows * kInputWidth + kInputWidth - 1; ++i) {
     #pragma HLS PIPELINE
 
-#ifdef KERNEL_DEBUG
+#ifdef STENCIL_KERNEL_DEBUG
     std::stringstream debugStream;
     debugStream << "Stage " << stage << ": (" << t << ", " << b << ", "
                 << r << ", " << c - kBoundaryWidth << "): ";
@@ -146,7 +146,7 @@ ComputeFlat:
         read = DataPack(kBoundary);
       }
       hlslib::WriteOptimistic(centerBuffer, read, kInputWidth);
-#ifdef KERNEL_DEBUG
+#ifdef STENCIL_KERNEL_DEBUG
       debugStream << "saturating " << read << "\n";
       if (debugCond) {
         std::cout << debugStream.str();
@@ -204,7 +204,7 @@ ComputeFlat:
     shiftWest = shiftCenter[kDataWidth - 1];
     shiftCenter = nextCenter;
 
-#ifdef KERNEL_DEBUG
+#ifdef STENCIL_KERNEL_DEBUG
     debugStream << "N" << north << ", W" << west << ", E" << east << ", S"
                 << south;
 #endif
@@ -227,20 +227,20 @@ ComputeFlat:
         write = DataPack(kBoundary);
       }
       hlslib::WriteBlocking(pipeOut, write, kPipeDepth);
-#ifdef KERNEL_DEBUG
+#ifdef STENCIL_KERNEL_DEBUG
       if (debugCond) {
         debugStream << " -> " << write << "\n"; 
       }
 #endif
     } else {
-#ifdef KERNEL_DEBUG
+#ifdef STENCIL_KERNEL_DEBUG
       if (debugCond) {
         debugStream << " no output.\n";
       }
 #endif
     }
 
-#ifdef KERNEL_DEBUG
+#ifdef STENCIL_KERNEL_DEBUG
     if (debugCond) {
       std::cout << debugStream.str();
     }
@@ -267,7 +267,7 @@ ComputeFlat:
 
 }
 
-#ifdef SDACCEL_TEST_SYNTHESIS
+#ifdef STENCIL_SYNTHESIS
 
 template <int stage>
 void UnrollCompute(hlslib::Stream<DataPack> &previous,
@@ -370,7 +370,7 @@ void Kernel(DataPack const *memIn0, DataPack const *memIn1, DataPack *memOut0,
 
   // The typedef seems to break the high level synthesis tool when applying
   // pragmas
-#ifndef SDACCEL_TEST_SYNTHESIS
+#ifndef STENCIL_SYNTHESIS
   hlslib::Stream<DataPack> pipeIn("pipeIn");
   hlslib::Stream<DataPack> pipeIn0("pipeIn0");
   hlslib::Stream<DataPack> pipeIn1("pipeIn1");
@@ -395,7 +395,7 @@ void Kernel(DataPack const *memIn0, DataPack const *memIn1, DataPack *memOut0,
   #pragma HLS STREAM variable=pipeOut1 depth=kPipeDepth
 #endif
 
-  #ifdef SDACCEL_TEST_SYNTHESIS
+#ifdef STENCIL_SYNTHESIS
   Read(memIn0, pipeIn0);
   Read(memIn1, pipeIn1);
   Demux(pipeIn0, pipeIn1, pipeIn);
@@ -403,7 +403,7 @@ void Kernel(DataPack const *memIn0, DataPack const *memIn1, DataPack *memOut0,
   Mux(pipeOut, pipeOut0, pipeOut1);
   Write(pipeOut0, memOut0);
   Write(pipeOut1, memOut1);
-  #else
+#else
   std::vector<std::thread> threads;
   threads.emplace_back(Read, memIn0, std::ref(pipeIn0));
   threads.emplace_back(Read, memIn1, std::ref(pipeIn1));
@@ -417,5 +417,5 @@ void Kernel(DataPack const *memIn0, DataPack const *memIn1, DataPack *memOut0,
   for (auto &t : threads) {
     t.join();
   }
-  #endif
+#endif
 }

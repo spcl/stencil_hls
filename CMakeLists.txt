@@ -9,6 +9,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 set(STENCIL_PART_NAME "xcku115-flvb2104-2-e" CACHE STRING "Vivado HLS part name.") 
 set(STENCIL_DSA_STRING "xilinx:tul-pcie3-ku115:2ddr:3.1" CACHE STRING "SDAccel DSA string")
 set(STENCIL_KEEP_INTERMEDIATE OFF CACHE STRING "Keep intermediate SDAccel files")
+set(STENCIL_TARGET_TIMING 4 CACHE STRING "Target timing for HLS in nanoseconds. Will not be used when building the kernel.")
+set(STENCIL_TARGET_CLOCK 250 CACHE STRING "Target clock when building hardware kernel.")
 
 # Domain configuration
 set(STENCIL_DATA_TYPE "float" CACHE STRING "Data type used for computations.")
