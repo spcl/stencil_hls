@@ -1,0 +1,33 @@
+#pragma once
+
+#include "hlslib/DataPack.h"
+
+using Data_t = ${STENCIL_DATA_TYPE};
+
+constexpr int kDataWidth = ${STENCIL_DATA_WIDTH};
+constexpr int kPipeDepth = 4;
+constexpr int kRows = ${STENCIL_ROWS};
+constexpr int kTotalCols = ${STENCIL_COLS};
+constexpr int kCols = kTotalCols / kDataWidth;
+constexpr int kDepth = ${STENCIL_DEPTH};
+constexpr int kHalo = (kDataWidth + kDepth - 1) / kDataWidth;
+constexpr int kBlocks = ${STENCIL_BLOCKS};
+constexpr int kTime = ${STENCIL_TIME};
+constexpr int kColsPerBlock = kCols / kBlocks;
+constexpr int kReadSize = 2 * (kColsPerBlock + kHalo) * kRows +
+                          (kBlocks - 2) * (kColsPerBlock + 2 * kHalo) * kRows;
+constexpr int kWriteSize = kRows * kCols;
+constexpr int kTimeFolded = kTime / kDepth;
+constexpr Data_t kBoundary = 1;
+
+using DataPack = hlslib::DataPack<Data_t, kDataWidth>;
+
+static_assert(kBlocks > 1, "Must have multiple blocks");
+static_assert(kTimeFolded % 2 == 0, "Number of folded timesteps must be even");
+
+extern "C" {
+
+void Kernel(DataPack const *read0, DataPack const *read1, DataPack *write0,
+            DataPack *write1);
+
+}

@@ -1,12 +1,12 @@
 #include "hlslib/Stream.h"
 #include "hlslib/Utility.h"
-#include "Kernel.h"
+#include "Stencil.h"
 #include <cassert>
 #ifndef SDACCEL_TEST_SYNTHESIS
 #include <thread>
 #endif
 
-void Read(Burst const *memory, hlslib::Stream<Burst> &pipeIn) {
+void Read(DataPack const *memory, hlslib::Stream<DataPack> &pipeIn) {
 ReadTime:
   for (int t = 0; t < kTimeFolded; ++t) {
   ReadBlocks:
@@ -19,10 +19,10 @@ ReadTime:
           #pragma HLS LOOP_FLATTEN
           const auto offset =
               (b == 0) ? 0 : ((b == kBlocks - 1) ? (2 * kHalo) : kHalo);
-          const auto index = (t % 2) * (kMemSize / 2) + r * kCols +
+          const auto index = (t % 2) * (kWriteSize / 2) + r * kCols +
                              b * kColsPerBlock + c - offset;
           assert(index >= 0);
-          assert(index < kMemSize);
+          assert(index < kWriteSize);
           const auto read = memory[index];
           if ((b > 0 || c < kColsPerBlock + kHalo) &&
               (b < kBlocks - 1 || c >= kHalo)) {
@@ -34,8 +34,8 @@ ReadTime:
   } // End time
 }
 
-void Demux(hlslib::Stream<Burst> &pipeIn0, hlslib::Stream<Burst> &pipeIn1,
-           hlslib::Stream<Burst> &pipeIn) {
+void Demux(hlslib::Stream<DataPack> &pipeIn0, hlslib::Stream<DataPack> &pipeIn1,
+           hlslib::Stream<DataPack> &pipeIn) {
 
   int b = 0;
   int r = 0;
@@ -47,7 +47,7 @@ DemuxTime:
     for (int i = 0; i < kReadSize; ++i) {
       #pragma HLS PIPELINE
       #pragma HLS LOOP_FLATTEN
-      Burst read;
+      DataPack read;
       if (r % 2 == 0) {
         read = hlslib::ReadBlocking(pipeIn0);
       } else {
@@ -76,7 +76,7 @@ DemuxTime:
 }
 
 template <int stage>
-void Compute(hlslib::Stream<Burst> &pipeIn, hlslib::Stream<Burst> &pipeOut) {
+void Compute(hlslib::Stream<DataPack> &pipeIn, hlslib::Stream<DataPack> &pipeOut) {
 
   static constexpr int kInputWidth =
       kColsPerBlock + 2 * hlslib::CeilDivide(kDepth - stage, kDataWidth);
@@ -101,13 +101,13 @@ void Compute(hlslib::Stream<Burst> &pipeIn, hlslib::Stream<Burst> &pipeOut) {
   // The typedef seems to break the high level synthesis tool when applying
   // pragmas
 #ifndef SDACCEL_TEST_SYNTHESIS 
-  hlslib::Stream<Burst> northBuffer("northBuffer");
-  hlslib::Stream<Burst> centerBuffer("centerBuffer");
+  hlslib::Stream<DataPack> northBuffer("northBuffer");
+  hlslib::Stream<DataPack> centerBuffer("centerBuffer");
 #else
-  hls::stream<Burst> northBuffer("northBuffer");
+  hls::stream<DataPack> northBuffer("northBuffer");
   #pragma HLS STREAM variable=northBuffer depth=kInputWidth
   #pragma HLS RESOURCE variable=northBuffer core=FIFO_BRAM
-  hls::stream<Burst> centerBuffer("centerBuffer");
+  hls::stream<DataPack> centerBuffer("centerBuffer");
   #pragma HLS STREAM variable=centerBuffer depth=kInputWidth
   #pragma HLS RESOURCE variable=centerBuffer core=FIFO_BRAM
 #endif
@@ -118,7 +118,7 @@ void Compute(hlslib::Stream<Burst> &pipeIn, hlslib::Stream<Burst> &pipeOut) {
   int c = 0;
 
   Data_t shiftWest(kBoundary);
-  Burst shiftCenter(kBoundary);
+  DataPack shiftCenter(kBoundary);
 
 ComputeFlat:
   for (int i = 0;
@@ -139,11 +139,11 @@ ComputeFlat:
     const bool inBlock = c >= kInnerBegin && c < kInnerEnd;
 
     if (isSaturating) {
-      Burst read;
+      DataPack read;
       if (i >= kInnerBegin - 1) { // Shift right by one
         read = hlslib::ReadBlocking(pipeIn);
       } else {
-        read = Burst(kBoundary);
+        read = DataPack(kBoundary);
       }
       hlslib::WriteOptimistic(centerBuffer, read, kInputWidth);
 #ifdef KERNEL_DEBUG
@@ -155,7 +155,7 @@ ComputeFlat:
       continue;
     }
 
-    Burst read;
+    DataPack read;
     if (!isDraining) {
       // If not on the last row, check if the column in this block is out
       // of bounds. If on the last row, check if the column is out of
@@ -165,7 +165,7 @@ ComputeFlat:
           (b == kBlocks - 1 && c >= kInnerEnd && r < kRows - 1) ||
           (b == kBlocks - 2 && c >= kInnerEnd && r == kRows - 1)) {
 
-        read = Burst(kBoundary);
+        read = DataPack(kBoundary);
 
       } else {
 
@@ -176,12 +176,12 @@ ComputeFlat:
 
     // Collect vertical values
     const auto north =
-        (r > 0) ? hlslib::ReadOptimistic(northBuffer) : Burst(kBoundary);
-    const auto south = (r < kRows - 1) ? read : Burst(kBoundary);
+        (r > 0) ? hlslib::ReadOptimistic(northBuffer) : DataPack(kBoundary);
+    const auto south = (r < kRows - 1) ? read : DataPack(kBoundary);
 
     // Use center value shifted forward to populate bulk of west and east
     // vectors
-    Burst west, east;
+    DataPack west, east;
     shiftCenter.ShiftTo<0, 1, kDataWidth - 1>(west);
     shiftCenter.ShiftTo<1, 0, kDataWidth - 1>(east);
 
@@ -210,7 +210,7 @@ ComputeFlat:
 #endif
 
     // Now we can perform the actual compute
-    Burst result;
+    DataPack result;
   ComputeSIMD:
     for (int w = 0; w < kDataWidth; ++w) {
       #pragma HLS UNROLL
@@ -220,11 +220,11 @@ ComputeFlat:
 
     // Only output values if the next unit needs them
     if (c >= kOutputBegin && c < kOutputEnd && inBounds) {
-      Burst write;
+      DataPack write;
       if (inBounds) {
         write = result;
       } else {
-        write = Burst(kBoundary);
+        write = DataPack(kBoundary);
       }
       hlslib::WriteBlocking(pipeOut, write, kPipeDepth);
 #ifdef KERNEL_DEBUG
@@ -270,18 +270,18 @@ ComputeFlat:
 #ifdef SDACCEL_TEST_SYNTHESIS
 
 template <int stage>
-void UnrollCompute(hlslib::Stream<Burst> &previous,
-                   hlslib::Stream<Burst> &last) {
+void UnrollCompute(hlslib::Stream<DataPack> &previous,
+                   hlslib::Stream<DataPack> &last) {
   #pragma HLS INLINE
-  hls::stream<Burst> next("pipe");
+  hls::stream<DataPack> next("pipe");
   #pragma HLS STREAM variable=next depth=kPipeDepth
   Compute<kDepth - stage>(previous, next);
   UnrollCompute<stage - 1>(next, last);
 }
 
 template <>
-void UnrollCompute<1>(hlslib::Stream<Burst> &previous,
-                      hlslib::Stream<Burst> &last) {
+void UnrollCompute<1>(hlslib::Stream<DataPack> &previous,
+                      hlslib::Stream<DataPack> &last) {
   #pragma HLS INLINE
   Compute<kDepth - 1>(previous, last);
 }
@@ -289,24 +289,24 @@ void UnrollCompute<1>(hlslib::Stream<Burst> &previous,
 #else
 
 template <int stage>
-void UnrollCompute(hlslib::Stream<Burst> &previous, hlslib::Stream<Burst> &last,
+void UnrollCompute(hlslib::Stream<DataPack> &previous, hlslib::Stream<DataPack> &last,
                    std::vector<std::thread> &threads) {
-  static hlslib::Stream<Burst> next("pipe");
+  static hlslib::Stream<DataPack> next("pipe");
   threads.emplace_back(Compute<kDepth - stage>, std::ref(previous),
                        std::ref(next));
   UnrollCompute<stage - 1>(next, last, threads);
 } 
 template <>
-void UnrollCompute<1>(hlslib::Stream<Burst> &previous,
-                      hlslib::Stream<Burst> &last,
+void UnrollCompute<1>(hlslib::Stream<DataPack> &previous,
+                      hlslib::Stream<DataPack> &last,
                       std::vector<std::thread> &threads) {
   threads.emplace_back(Compute<kDepth - 1>, std::ref(previous), std::ref(last));
 }
 
 #endif
 
-void Mux(hlslib::Stream<Burst> &pipeOut, hlslib::Stream<Burst> &pipeOut0,
-         hlslib::Stream<Burst> &pipeOut1) {
+void Mux(hlslib::Stream<DataPack> &pipeOut, hlslib::Stream<DataPack> &pipeOut0,
+         hlslib::Stream<DataPack> &pipeOut1) {
 DemuxTime:
   for (int t = 0; t < kTimeFolded; ++t) {
   DemuxBlocks:
@@ -330,7 +330,7 @@ DemuxTime:
 
 }
 
-void Write(hlslib::Stream<Burst> &pipeOut, Burst *memory) {
+void Write(hlslib::Stream<DataPack> &pipeOut, DataPack *memory) {
 WriteTime:
   for (int t = 0; t < kTimeFolded; ++t) {
   WriteBlocks:
@@ -341,11 +341,11 @@ WriteTime:
         for (int c = 0; c < kColsPerBlock; ++c) {
           #pragma HLS PIPELINE
           #pragma HLS LOOP_FLATTEN
-          const int index = (((t + 1) % 2) * (kMemSize / 2) + r * kCols +
+          const int index = (((t + 1) % 2) * (kWriteSize / 2) + r * kCols +
                              b * kColsPerBlock + c) %
-                            kMemSize;
+                            kWriteSize;
           assert(index >= 0);
-          assert(index < kMemSize);
+          assert(index < kWriteSize);
           memory[index] = hlslib::ReadBlocking(pipeOut);
         }
       }
@@ -353,8 +353,8 @@ WriteTime:
   }
 }
 
-void Kernel(Burst const *memIn0, Burst const *memIn1, Burst *memOut0,
-            Burst *memOut1) {
+void Kernel(DataPack const *memIn0, DataPack const *memIn1, DataPack *memOut0,
+            DataPack *memOut1) {
 
   #pragma HLS INTERFACE m_axi port=memIn0  offset=slave bundle=gmem0
   #pragma HLS INTERFACE m_axi port=memIn1  offset=slave bundle=gmem1
@@ -371,27 +371,27 @@ void Kernel(Burst const *memIn0, Burst const *memIn1, Burst *memOut0,
   // The typedef seems to break the high level synthesis tool when applying
   // pragmas
 #ifndef SDACCEL_TEST_SYNTHESIS
-  hlslib::Stream<Burst> pipeIn("pipeIn");
-  hlslib::Stream<Burst> pipeIn0("pipeIn0");
-  hlslib::Stream<Burst> pipeIn1("pipeIn1");
-  hlslib::Stream<Burst> pipeCompute("pipeCompute");
-  hlslib::Stream<Burst> pipeOut("pipeOut");
-  hlslib::Stream<Burst> pipeOut0("pipeOut0");
-  hlslib::Stream<Burst> pipeOut1("pipeOut1");
+  hlslib::Stream<DataPack> pipeIn("pipeIn");
+  hlslib::Stream<DataPack> pipeIn0("pipeIn0");
+  hlslib::Stream<DataPack> pipeIn1("pipeIn1");
+  hlslib::Stream<DataPack> pipeCompute("pipeCompute");
+  hlslib::Stream<DataPack> pipeOut("pipeOut");
+  hlslib::Stream<DataPack> pipeOut0("pipeOut0");
+  hlslib::Stream<DataPack> pipeOut1("pipeOut1");
 #else
-  hls::stream<Burst> pipeIn("pipeIn");
+  hls::stream<DataPack> pipeIn("pipeIn");
   #pragma HLS STREAM variable=pipeIn depth=kPipeDepth
-  hls::stream<Burst> pipeIn0("pipeIn0");
+  hls::stream<DataPack> pipeIn0("pipeIn0");
   #pragma HLS STREAM variable=pipeIn0 depth=kPipeDepth
-  hls::stream<Burst> pipeIn1("pipeIn1");
+  hls::stream<DataPack> pipeIn1("pipeIn1");
   #pragma HLS STREAM variable=pipeIn1 depth=kPipeDepth
-  hls::stream<Burst> pipeCompute("pipeCompute");
+  hls::stream<DataPack> pipeCompute("pipeCompute");
   #pragma HLS STREAM variable=pipeCompute depth=kPipeDepth
-  hls::stream<Burst> pipeOut("pipeOut");
+  hls::stream<DataPack> pipeOut("pipeOut");
   #pragma HLS STREAM variable=pipeOut depth=kPipeDepth
-  hls::stream<Burst> pipeOut0("pipeOut0");
+  hls::stream<DataPack> pipeOut0("pipeOut0");
   #pragma HLS STREAM variable=pipeOut0 depth=kPipeDepth
-  hls::stream<Burst> pipeOut1("pipeOut1");
+  hls::stream<DataPack> pipeOut1("pipeOut1");
   #pragma HLS STREAM variable=pipeOut1 depth=kPipeDepth
 #endif
 
