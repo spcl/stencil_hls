@@ -65,7 +65,7 @@ target_link_libraries(ExecuteKernel ${STENCIL_LIBS})
 set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS} 
   # Includes
   -I${CMAKE_BINARY_DIR}
-  -I${CMAKE_SOURCE_DIR}
+  -I${CMAKE_SOURCE_DIR}/include
   # Source
   ${CMAKE_SOURCE_DIR}/src/Stencil.cpp
   # Flags
