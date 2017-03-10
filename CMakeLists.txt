@@ -63,6 +63,7 @@ add_test(Testbench Testbench)
 add_executable(ExecuteKernel host/ExecuteKernel.cpp)
 target_link_libraries(ExecuteKernel ${STENCIL_LIBS} ${SDACCEL_LIBS})
 set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS} 
+  -O3
   # Includes
   -I${CMAKE_BINARY_DIR}
   -I${CMAKE_SOURCE_DIR}/include
