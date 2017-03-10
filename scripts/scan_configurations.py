@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from datetime import timedelta
 import itertools
 import multiprocessing as mp
 import os
@@ -6,6 +7,7 @@ import re
 import signal
 import subprocess as sp
 import sys
+import time
 
 def conf_string(conf):
   return (str(conf.dtype) + "_" + str(conf.targetClock) + "_" +
@@ -84,13 +86,30 @@ def run_build(conf):
   print(confStr + ": building software...")
   if run_process("make".split(), confDir) != 0:
     raise Exception(confStr + ": Software build failed.")
+  begin = time.time()
   print(confStr + ": running HLS...")
   if run_process("make synthesis".split(), confDir) != 0:
     raise Exception(confStr + ": HLS failed.")
+  print(confStr + ": finished HLS after {}.".format(
+      str(timedelta(seconds=time.time() - begin))))
+  begin = time.time()
   print(confStr + ": starting kernel build...")
   if run_process("make kernel".split(), confDir) != 0:
-    raise Exception(confStr + ": build failed.")
-  print(confStr + ": success!")
+    try:
+      with open(os.path.join(confDir, "log.out")) as logFile:
+        m = re.search("auto frequency scaling failed", logFile.read())
+        if not m:
+          print(confStr + ": failed after {}.".format(
+              str(timedelta(seconds=time.time() - begin))))
+        else:
+          print(confStr + ": failed timing after {}.".format(
+              str(timedelta(seconds=time.time() - begin))))
+    except FileNotFoundError:
+      print(confStr + ": failed after {}.".format(
+          str(timedelta(seconds=time.time() - begin))))
+  else:
+    print(confStr + ": finished in {}.".format(
+        str(timedelta(seconds=time.time() - begin))))
 
 def extract_result_build(conf):
   implFolder = os.path.join(
