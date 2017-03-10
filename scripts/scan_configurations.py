@@ -130,8 +130,9 @@ def run_build(conf, hardware=True):
         clockFile.write(m.group(1))
 
 def extract_result_build(conf):
+  buildFolder = os.path.join("scan", "build_" + conf_string(conf))
   implFolder = os.path.join(
-      "scan", "build_" + conf_string(conf), "_xocc_Stencil_sdaccel_hw.dir",
+      buildFolder, "_xocc_Stencil_sdaccel_hw.dir",
       "impl", "build","system", "sdaccel_hw", "bitstream", "sdaccel_hw_ipi",
       "ipiimpl", "ipiimpl.runs", "impl_1")
   if not os.path.exists(implFolder):
@@ -145,9 +146,9 @@ def extract_result_build(conf):
     return
   report = open(reportPath).read()
   luts = int(re.search(
-      "Slice LUTs[ \t]*\|[ \t]*([0-9]+)", report).group(1))
+      "CLB LUTs[ \t]*\|[ \t]*([0-9]+)", report).group(1))
   ff = int(re.search(
-      "Slice Registers[ \t]*\|[ \t]*([0-9]+)", report).group(1))
+      "CLB Registers[ \t]*\|[ \t]*([0-9]+)", report).group(1))
   bram = int(re.search(
       "Block RAM Tile[ \t]*\|[ \t]*([0-9]+)", report).group(1))
   dsp = int(re.search(
@@ -159,7 +160,13 @@ def extract_result_build(conf):
     report = open(reportPath).read()
     power = float(re.search(
         "Total On-Chip Power \(W\)[ \t]*\|[ \t]*([0-9\.]+)", report).group(1))
-  conf.consumption = Consumption(conf, status, luts, ff, dsp, bram, power)
+  frequencyPath = os.path.join(buildFolder, "frequency.txt")
+  if os.path.exists(frequencyPath):
+    with open(frequencyPath, "r") as clockFile:
+      clock = int(clockFile.read())
+  else:
+    clock = conf.targetClock
+  conf.consumption = Consumption(conf, status, luts, ff, dsp, bram, power, clock)
 
 def check_build_status(implFolder):
   try:
