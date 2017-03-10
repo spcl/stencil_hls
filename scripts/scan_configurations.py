@@ -131,18 +131,22 @@ def run_build(conf, hardware=True):
 
 def extract_result_build(conf):
   buildFolder = os.path.join("scan", "build_" + conf_string(conf))
-  implFolder = os.path.join(
+  kernelFolder = os.path.join(
       buildFolder, "_xocc_Stencil_sdaccel_hw.dir",
-      "impl", "build","system", "sdaccel_hw", "bitstream", "sdaccel_hw_ipi",
-      "ipiimpl", "ipiimpl.runs", "impl_1")
+      "impl", "build", "system", "sdaccel_hw", "bitstream")
+  implFolder = os.path.join(
+      kernelFolder,
+      "sdaccel_hw_ipi", "ipiimpl", "ipiimpl.runs", "impl_1")
   if not os.path.exists(implFolder):
-    conf.consumption = Consumption(conf, "no_build", None, None, None, None, None, None)
+    conf.consumption = Consumption(conf, "no_build", None, None, None, None,
+                                   None, None)
     return
-  status = check_build_status(implFolder)
+  status = check_build_status(kernelFolder)
   reportPath = os.path.join(
       implFolder, "xcl_design_wrapper_utilization_placed.rpt")
   if not os.path.isfile(reportPath):
-    conf.consumption = Consumption(conf, status, None, None, None, None, None, None)
+    conf.consumption = Consumption(conf, status, None, None, None, None, None,
+                                   None)
     return
   report = open(reportPath).read()
   luts = int(re.search(
@@ -160,40 +164,28 @@ def extract_result_build(conf):
     report = open(reportPath).read()
     power = float(re.search(
         "Total On-Chip Power \(W\)[ \t]*\|[ \t]*([0-9\.]+)", report).group(1))
-  frequencyPath = os.path.join(buildFolder, "frequency.txt")
-  if os.path.exists(frequencyPath):
-    with open(frequencyPath, "r") as clockFile:
-      clock = int(clockFile.read())
-  else:
-    clock = conf.targetClock
-  conf.consumption = Consumption(conf, status, luts, ff, dsp, bram, power, clock)
-
-def check_build_status(implFolder):
   try:
-    report = open(os.path.join(implFolder, "build.log")).read()
+    with open(os.path.join(kernelFolder, "sdaccel_hw_ipi",
+                           "vivado_warning.txt"), "r") as clockFile:
+      warningText = clockFile.read()
+      m = re.search("automatically changed to ([0-9]+) MHz", warningText)
+      clock = int(m.group(1))
+  except FileNotFoundError:
+    clock = conf.targetClock
+  conf.consumption = Consumption(
+      conf, status, luts, ff, dsp, bram, power, clock)
+
+def check_build_status(kernelFolder):
+  try:
+    report = open(
+        os.path.join(kernelFolder, "sdaccel_hw_ipi", "vivado.log")).read()
   except:
-    try:
-      report = open(os.path.join(implFolder, "runme.log")).read()
-    except:
-      return "no_build"
-  m = re.search("The design failed to meet the timing requirements|The design did not meet timing requirements", report)
+    return "no_build"
+  m = re.search("auto frequency scaling failed", report)
   if m:
     return "failed_timing"
-  m = re.search("The packing of instances into the device could not be obeyed|Placer could not place all instances",
-                report)
-  if m:
-    return "failed_place"
-  m = re.search("Error(s) found during DRC", report)
-  if m:
-    return "failed_route"
-  m = re.search("Design utilization is very high.", report)
-  if m:
-    return "failed_utilization"
-  m = re.search("Unable to write message PB_Results to top_power_routed.rpx", report)
-  if m:
-    return "failed_log"
-  for fileName in os.listdir(implFolder):
-    if len(fileName) >= 4 and fileName[-4:] == ".bit":
+  for fileName in os.listdir(kernelFolder):
+    if len(fileName) >= 7 and fileName[-7:] == ".xclbin":
       return "success"
   return "failed_unknown"
 
