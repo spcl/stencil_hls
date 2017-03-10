@@ -89,16 +89,16 @@ def run_build(conf, hardware=True):
   if run_process("sh Configure.sh".split(), confDir) != 0:
     raise Exception(confStr + ": Configuration failed.")
   print(confStr + ": cleaning folder...")
-  # if run_process("make clean".split(), confDir) != 0:
-  #   raise Exception(confStr + ": Clean failed.")
+  if run_process("make clean".split(), confDir) != 0:
+    raise Exception(confStr + ": Clean failed.")
   print(confStr + ": building software...")
   if run_process("make".split(), confDir) != 0:
     raise Exception(confStr + ": Software build failed.")
   if hardware:
     begin = time.time()
     print(confStr + ": running HLS...")
-    # if run_process("make synthesis".split(), confDir) != 0:
-    #   raise Exception(confStr + ": HLS failed.")
+    if run_process("make synthesis".split(), confDir) != 0:
+      raise Exception(confStr + ": HLS failed.")
     print(confStr + ": finished HLS after {}.".format(
         str(datetime.timedelta(seconds=time.time() - begin))))
     begin = time.time()
