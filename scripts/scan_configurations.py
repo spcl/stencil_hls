@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+import datetime
 import itertools
 import multiprocessing as mp
 import os
 import re
+import shutil
 import signal
 import subprocess as sp
 import sys
@@ -67,7 +69,7 @@ def cmake_command(conf, options=""):
           " -DSTENCIL_DATA_WIDTH={}".format(conf.width) +
           " -DSTENCIL_DEPTH={}".format(conf.depth))
 
-def run_build(conf):
+def create_builds(conf):
   cmakeCommand = cmake_command(conf, options=conf.options)
   confStr = conf_string(conf)
   confDir = os.path.join("scan", "build_" + confStr)
@@ -76,7 +78,14 @@ def run_build(conf):
   except:
     pass
   print(confStr + ": configuring...")
-  if run_process(cmakeCommand.split(), confDir) != 0:
+  with open(os.path.join(confDir, "Configure.sh"), "w") as confFile:
+    confFile.write("#!/bin/sh\n{}".format(cmakeCommand))
+  run_build(conf)
+
+def run_build(conf, hardware=True):
+  confStr = conf_string(conf)
+  confDir = os.path.join("scan", "build_" + confStr)
+  if run_process("sh Configure.sh".split(), confDir) != 0:
     raise Exception(confStr + ": Configuration failed.")
   print(confStr + ": cleaning folder...")
   if run_process("make clean".split(), confDir) != 0:
@@ -84,13 +93,25 @@ def run_build(conf):
   print(confStr + ": building software...")
   if run_process("make".split(), confDir) != 0:
     raise Exception(confStr + ": Software build failed.")
-  print(confStr + ": running HLS...")
-  if run_process("make synthesis".split(), confDir) != 0:
-    raise Exception(confStr + ": HLS failed.")
-  print(confStr + ": starting kernel build...")
-  if run_process("make kernel".split(), confDir) != 0:
-    raise Exception(confStr + ": build failed.")
+  if hardware:
+    print(confStr + ": running HLS...")
+    if run_process("make synthesis".split(), confDir) != 0:
+      raise Exception(confStr + ": HLS failed.")
+    print(confStr + ": starting kernel build...")
+    if run_process("make kernel".split(), confDir) != 0:
+      raise Exception(confStr + ": build failed.")
+    with open(os.path.join(confDir, "sdaccel_hw.xclbin"), "w") as dummy:
+      dummy.write("herpderp")
   print(confStr + ": success!")
+  with open(os.path.join(confDir, "log.out"), "r") as logFile:
+    m = re.search(
+        "The frequency is being automatically changed to ([0-9]+) MHz",
+        logFile.read())
+    with open(os.path.join(confDir, "frequency.txt"), "w") as clockFile:
+      if not m:
+        clockFile.write(str(conf.targetClock))
+      else:
+        clockFile.write(m.group(1))
 
 def extract_result_build(conf):
   implFolder = os.path.join(
@@ -154,12 +175,12 @@ def check_build_status(implFolder):
   return "failed_unknown"
 
 def get_conf(folderName):
-  m = re.search("build_(float|double)_([0-9]+)_([0-9]+)_([0-9]+)",
+  m = re.search("build_(float|double)_([0-9]+)_([0-9]+)_([0-9]+)_([0-9]+)",
                 folderName)
   if not m:
     return None
   return Configuration(m.group(1), int(m.group(2)), int(m.group(3)),
-                       int(m.group(4)))
+                       int(m.group(4)), int(m.group(5)), None)
 
 def extract_to_file():
   confs = []
@@ -182,10 +203,101 @@ def scan_configurations(numProcs, configurations):
     pass
   pool = mp.Pool(processes=numProcs)
   try:
-    pool.map(run_build, configurations)
+    pool.map(create_builds, configurations)
   except KeyboardInterrupt:
     pool.terminate()
   print("All configurations finished running.")
+
+def package_configurations():
+  packagedSomething = False
+  for fileName in os.listdir("scan"):
+    conf = get_conf(fileName)
+    if not conf:
+      continue
+    packageFolder = os.path.join("scan_packaged", fileName)
+    kernelPath = os.path.join("scan", fileName, "sdaccel_hw.xclbin")
+    if not os.path.exists(kernelPath):
+      continue
+    print("Packaging {}...".format(fileName))
+    try:
+      os.makedirs(packageFolder)
+    except FileExistsError:
+      pass
+    shutil.copy(os.path.join("scan", fileName, "Configure.sh"), packageFolder)
+    shutil.copy(os.path.join("scan", fileName, "frequency.txt"), packageFolder)
+    shutil.copy(kernelPath, packageFolder)
+    packagedSomething = True
+  if packagedSomething:
+    print("Kernels and configuration files packaged into \"scan_packaged\".")
+  else:
+    print("No kernels found in \"scan\".")
+
+def unpackage_configuration(conf):
+  confStr = conf_string(conf)
+  fileName = "build_" + confStr
+  print("Unpackaging {}...".format(confStr))
+  unpackageFolder = os.path.join("scan", fileName)
+  try:
+    os.makedirs(unpackageFolder)
+  except FileExistsError:
+    pass
+  shutil.copy(os.path.join("scan_packaged", fileName, "Configure.sh"),
+              unpackageFolder)
+  shutil.copy(os.path.join("scan_packaged", fileName, "frequency.txt"),
+              unpackageFolder)
+  shutil.copy(os.path.join("scan_packaged", fileName, "sdaccel_hw.xclbin"),
+              unpackageFolder)
+  run_build(conf, hardware=False)
+
+def unpackage_configurations():
+  unpackagedSomething = False
+  confs = []
+  for fileName in os.listdir("scan_packaged"):
+    conf = get_conf(fileName)
+    if not conf:
+      continue
+    confs.append(conf)
+    unpackagedSomething = True
+  pool = mp.Pool(processes=len(confs))
+  try:
+    pool.map(unpackage_configuration, confs)
+  except KeyboardInterrupt:
+    pool.terminate()
+  if unpackagedSomething:
+    print("Successfully unpackaged kernels into \"scan\".")
+  else:
+    print("No kernels found in \"scan_packaged\".")
+
+def benchmark(repetitions):
+  for fileName in os.listdir("scan"):
+    conf = get_conf(fileName)
+    confStr = conf_string(conf)
+    folderName = "benchmark_" + confStr
+    if not conf:
+      continue
+    kernelFolder = os.path.join("scan", fileName)
+    kernelPath = os.path.join(kernelFolder, "sdaccel_hw.xclbin")
+    if not os.path.exists(kernelPath):
+      continue
+    with open(os.path.join(kernelFolder, "frequency.txt"), "r") as clockFile:
+      realClock = clockFile.read()
+    pattern = re.compile("(build_(float|double))_[0-9]+_([0-9]+_[0-9]+_[0-9]+)")
+    benchmarkFolder = os.path.join("benchmarks",
+                                   pattern.sub("\\1_{}_\\2".format(realClock),
+                                               folderName))
+    try:
+      os.makedirs(benchmarkFolder)
+    except FileExistsError:
+      pass
+    if run_process("make".split(), kernelFolder) != 0:
+      raise Exception(confStr + ": software build failed.")
+    for i in range(repetitions):
+      if run_process("./ExecuteKernel".split(), kernelFolder) != 0:
+        raise Exception(confStr + ": kernel execution failed.")
+      shutil.copy(os.path.join(kernelFolder, "sdaccel_profile_summary.csv"),
+                  os.path.join(benchmarkFolder,
+                               str(datetime.datetime.now()).replace(" ", "_")
+                               + ".csv"))
 
 def print_usage():
   print("Usage: " +
@@ -197,13 +309,29 @@ def print_usage():
         "<data width...> " +
         "<compute units...> " +
         "<additional CMake options...>" +
-        "\n  ./scan_configurations.py extract",
+        "\n  ./scan_configurations.py extract" +
+        "\n  ./scan_configurations.py package_kernels" +
+        "\n  ./scan_configurations.py unpackage_kernels" +
+        "\n  ./scan_configurations.py benchmark <number of repetitions...>",
         file=sys.stderr)
 
 if __name__ == "__main__":
 
-  if len(sys.argv) == 2 and sys.argv[1] == "extract":
-    extract_to_file()
+  if len(sys.argv) == 2:
+    if sys.argv[1] == "extract":
+      extract_to_file()
+      sys.exit(0)
+    elif sys.argv[1] == "package_kernels":
+      package_configurations()
+      sys.exit(0)
+    elif sys.argv[1] == "unpackage_kernels":
+      unpackage_configurations()
+      sys.exit(0)
+    else:
+      raise "Unknown command \"{}\"/".format(sys.argv[1])
+
+  if len(sys.argv) == 3 and sys.argv[1] == "benchmark":
+    benchmark(int(sys.argv[2]))
     sys.exit(0)
 
   if len(sys.argv) < 7:
