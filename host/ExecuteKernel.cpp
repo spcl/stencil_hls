@@ -25,10 +25,19 @@ std::vector<Data_t> Reference(std::vector<Data_t> const &input) {
   return domain;
 }
 
-int main(int argc, char **) {
-  if (argc != 1) {
-    std::cerr << "Usage: ./Testbench" << std::endl;
+int main(int argc, char **argv) {
+  if (argc > 2) {
+    std::cerr << "Usage: ./ExecuteKernel <verify [yes/no]>" << std::endl;
     return 1;
+  }
+  bool verify = true;
+  if (argc == 2) {
+    const std::string arg(argv[1]);
+    if (arg == "yes") {
+      verify = true;
+    } else if (arg == "no") {
+      verify = false;
+    }
   }
   std::vector<DataPack> memory0(kWriteSize, DataPack(static_cast<Data_t>(0)));
   std::vector<DataPack> memory1(kWriteSize, DataPack(static_cast<Data_t>(0)));
@@ -50,28 +59,30 @@ int main(int argc, char **) {
               << std::endl;
     return 1;
   }
-  std::vector<DataPack> result(kWriteSize);
-  for (int r = 0; r < kRows / 2; ++r) {
-    for (int c = 0; c < kCols; ++c) {
-      result[2*r*kCols + c] = memory0[r*kCols + c]; 
-      result[(2*r + 1)*kCols + c] = memory1[r*kCols + c]; 
+  if (verify) {
+    std::vector<DataPack> result(kWriteSize);
+    for (int r = 0; r < kRows / 2; ++r) {
+      for (int c = 0; c < kCols; ++c) {
+        result[2*r*kCols + c] = memory0[r*kCols + c]; 
+        result[(2*r + 1)*kCols + c] = memory1[r*kCols + c]; 
+      }
     }
-  }
-  const auto reference = Reference(std::vector<Data_t>(kRows * kTotalCols, 0));
-  for (int r = 0; r < kRows; ++r) {
-    for (int c = 0; c < kCols; ++c) {
-      for (int w = 0; w < kDataWidth; ++w) {
-        const Data_t diff = std::fabs(static_cast<double>(
-            Data_t(result[r * kCols + c][w]) -
-            Data_t(reference[r * kTotalCols + c * kDataWidth + w])));
-        if (diff > 1e-4) {
-          std::cerr << "Mismatch at (" << r << ", " << c
-                    << "): " << Data_t(result[r * kCols + c][w])
-                    << " (should be "
-                    << static_cast<double>(
-                           reference[r * kTotalCols + c * kDataWidth + w])
-                    << ")\n";
-          return 1;
+    const auto reference = Reference(std::vector<Data_t>(kRows * kTotalCols, 0));
+    for (int r = 0; r < kRows; ++r) {
+      for (int c = 0; c < kCols; ++c) {
+        for (int w = 0; w < kDataWidth; ++w) {
+          const Data_t diff = std::fabs(static_cast<double>(
+              Data_t(result[r * kCols + c][w]) -
+              Data_t(reference[r * kTotalCols + c * kDataWidth + w])));
+          if (diff > 1e-4) {
+            std::cerr << "Mismatch at (" << r << ", " << c
+                      << "): " << Data_t(result[r * kCols + c][w])
+                      << " (should be "
+                      << static_cast<double>(
+                             reference[r * kTotalCols + c * kDataWidth + w])
+                      << ")\n";
+            return 1;
+          }
         }
       }
     }
