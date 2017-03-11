@@ -19,6 +19,7 @@ constexpr long kReadSize = 2 * (kColsPerBlock + kHalo) * kRows +
                           (kBlocks - 2) * (kColsPerBlock + 2 * kHalo) * kRows;
 constexpr long kWriteSize = kRows * kCols;
 constexpr long kTimeFolded = kTime / kDepth;
+constexpr float kTargetClock = ${STENCIL_TARGET_CLOCK};
 const Data_t kBoundary = 1;
 
 using DataPack = hlslib::DataPack<Data_t, kDataWidth>;

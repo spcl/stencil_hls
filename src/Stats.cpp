@@ -1,17 +1,17 @@
 #include "Stencil.h"
 
 constexpr unsigned long BufferSpace() {
-  return (kColBlocks == 1) ? (kDepth * 2 * kColsPerBlock * kBlocks * kDataWidth)
-                           : (2 * kDepth * kColsPerBlock * kDataWidth +
-                              2 * kDepth * kDepth + 2 * kDepth);
+  return (kBlocks == 1) ? (kDepth * 2 * kColsPerBlock * kBlocks * kDataWidth)
+                        : (2 * kDepth * kColsPerBlock * kDataWidth +
+                           2 * kDepth * kDepth + 2 * kDepth);
 }
 
 constexpr unsigned long CyclesRequired() {
-  return (kColsPerBlock + 2 * kHalo) * kRows * kColBlocks * kTimeFolded;
+  return (kColsPerBlock + 2 * kHalo) * kRows * kBlocks * kTimeFolded;
 }
 
 constexpr float Efficiency() {
-  return (kColBlocks == 1)
+  return (kBlocks == 1)
              ? 1
              : kColsPerBlock / static_cast<float>(kColsPerBlock + 2 * kHalo);
 }
@@ -27,22 +27,26 @@ int main(int argc, char **argv) {
   std::cout << "Cols:           " << kTotalCols << "\n";
   std::cout << "Total elements: " << kRows * kTotalCols << "\n";
   std::cout << "Data width:     " << kDataWidth << " elements / "
-            << sizeof(Burst) << " bytes\n";
+            << sizeof(DataPack) << " bytes\n";
   std::cout << "Total bursts:   " << kWriteSize << " / " << kReadSize
             << " with halos\n";
-  std::cout << "Memory req.:    " << kColBlocks * kRows * kTimeFolded << "\n";
+  std::cout << "Memory req.:    " << kBlocks * kRows * kTimeFolded << "\n";
   std::cout << "Depth:          " << kDepth << "\n";
-  std::cout << "Blocks:         " << kColBlocks << "\n";
+  std::cout << "Blocks:         " << kBlocks << "\n";
   std::cout << "Block size:     " << kColsPerBlock << " bursts / "
             << kColsPerBlock * kDataWidth << " elements\n";
   std::cout << "Halo size:      " << kHalo << " bursts\n";
   std::cout << "Efficiency:     " << 100 * Efficiency() << "%\n";
   std::cout << "Buffer space:   " << BufferSpace() << " elements / "
             << BufferSpace() * sizeof(Data_t) << " bytes\n";
-  std::cout << "Timesteps:      " << kTimesteps << " / " << kTimeFolded
+  std::cout << "Timesteps:      " << kTime << " / " << kTimeFolded
             << " folded\n";
   std::cout << "Total cycles:   " << CyclesRequired() << " (plus latency)\n";
-  std::cout << "Clock rate:     " << clock << "\n";
+  std::cout << "Clock rate:     " << clock << " MHz";
+  if (clock != kTargetClock) {
+    std::cout << " (target " << kTargetClock << " MHz)";
+  }
+  std::cout << "\n";
   std::cout << "Peak Op/Cycle:  " << OpsPerCycle() << "\n";
   std::cout << "Peak Perf:      " << std::setprecision(4)
             << (OpsPerCycle() * clock) / 1000 << " GOp/s\n";
