@@ -61,15 +61,16 @@ class Configuration(object):
     self.consumption = None
 
 def cmake_command(conf, options=""):
-  timesteps = 256 * conf.depth
-  dim = conf.tileSize * 4 * conf.width
+  timesteps = 128 * conf.depth
+  dim = 16384
+  blocks = dim / (conf.tileSize * conf.width)
   return ("cmake ../../ " + " ".join(options) +
           " -DSTENCIL_KEEP_INTERMEDIATE=ON" +
           " -DSTENCIL_TARGET_CLOCK={}".format(conf.targetClock) +
           " -DSTENCIL_TARGET_TIMING={}".format(1000/conf.targetClock) +
           " -DSTENCIL_ROWS={}".format(dim) +
           " -DSTENCIL_COLS={}".format(dim) +
-          " -DSTENCIL_BLOCKS={}".format(8) +
+          " -DSTENCIL_BLOCKS={}".format(blocks) +
           " -DSTENCIL_TIME={}".format(timesteps) +
           " -DSTENCIL_DATA_TYPE={}".format(conf.dtype) +
           " -DSTENCIL_DATA_WIDTH={}".format(conf.width) +
