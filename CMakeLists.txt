@@ -53,6 +53,10 @@ add_custom_target(synthesis
   COMMAND ${SDACCEL_VIVADO_HLS} -f Synthesis.tcl
   DEPENDS ${STENCIL_HLS_DEPENDS})
 
+# Executables
+add_executable(Stats src/Stats.cpp)
+target_link_libraries(Stats ${STENCIL_LIBS})
+
 # Testing
 enable_testing()
 add_executable(Testbench test/Testbench.cpp src/Stencil.cpp)
