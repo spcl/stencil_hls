@@ -14,14 +14,19 @@ def conf_string(conf):
   return (str(conf.dtype) + "_" + str(conf.targetClock) + "_" +
           str(conf.units) + "_" + str(conf.width) + "_" + str(conf.tileSize))
 
-def run_process(command, directory, logPath="log"):
-  proc = sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE,
-                  universal_newlines=True, cwd=directory)
-  stdout, stderr = proc.communicate()
-  with open(os.path.join(directory, logPath + ".out"), "a") as outFile:
-    outFile.write(stdout)
-  with open(os.path.join(directory, logPath + ".err"), "a") as outFile:
-    outFile.write(stderr)
+def run_process(command, directory, pipe=True, logPath="log"):
+  if pipe:
+    proc = sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE,
+                    universal_newlines=True, cwd=directory)
+    stdout, stderr = proc.communicate()
+    with open(os.path.join(directory, logPath + ".out"), "a") as outFile:
+      outFile.write(stdout)
+    with open(os.path.join(directory, logPath + ".err"), "a") as outFile:
+      outFile.write(stderr)
+  else:
+    proc = sp.Popen(command,
+                    universal_newlines=True, cwd=directory)
+    proc.communicate()
   return proc.returncode
 
 class Consumption(object):
@@ -81,16 +86,17 @@ def create_builds(conf):
   print(confStr + ": configuring...")
   with open(os.path.join(confDir, "Configure.sh"), "w") as confFile:
     confFile.write("#!/bin/sh\n{}".format(cmakeCommand))
-  run_build(conf)
+  run_build(conf, clean=True, hardware=True)
 
-def run_build(conf, hardware=True):
+def run_build(conf, clean=True, hardware=True):
   confStr = conf_string(conf)
   confDir = os.path.join("scan", "build_" + confStr)
   if run_process("sh Configure.sh".split(), confDir) != 0:
     raise Exception(confStr + ": Configuration failed.")
-  print(confStr + ": cleaning folder...")
-  if run_process("make clean".split(), confDir) != 0:
-    raise Exception(confStr + ": Clean failed.")
+  if clean:
+    print(confStr + ": cleaning folder...")
+    if run_process("make clean".split(), confDir) != 0:
+      raise Exception(confStr + ": Clean failed.")
   print(confStr + ": building software...")
   if run_process("make".split(), confDir) != 0:
     raise Exception(confStr + ": Software build failed.")
@@ -149,10 +155,16 @@ def extract_result_build(conf):
                                    None)
     return
   report = open(reportPath).read()
-  luts = int(re.search(
-      "CLB LUTs[ \t]*\|[ \t]*([0-9]+)", report).group(1))
-  ff = int(re.search(
-      "CLB Registers[ \t]*\|[ \t]*([0-9]+)", report).group(1))
+  try:
+    luts = int(re.search(
+        "CLB LUTs[ \t]*\|[ \t]*([0-9]+)", report).group(1))
+    ff = int(re.search(
+        "CLB Registers[ \t]*\|[ \t]*([0-9]+)", report).group(1))
+  except AttributeError:
+    luts = int(re.search(
+        "Slice LUTs[ \t]*\|[ \t]*([0-9]+)", report).group(1))
+    ff = int(re.search(
+        "Slice Registers[ \t]*\|[ \t]*([0-9]+)", report).group(1))
   bram = int(re.search(
       "Block RAM Tile[ \t]*\|[ \t]*([0-9]+)", report).group(1))
   dsp = int(re.search(
@@ -229,8 +241,9 @@ def package_configurations():
     conf = get_conf(fileName)
     if not conf:
       continue
+    sourceDir = os.path.join("scan", fileName)
     packageFolder = os.path.join("scan_packaged", fileName)
-    kernelPath = os.path.join("scan", fileName, "sdaccel_hw.xclbin")
+    kernelPath = os.path.join(sourceDir, "sdaccel_hw.xclbin")
     if not os.path.exists(kernelPath):
       continue
     print("Packaging {}...".format(fileName))
@@ -238,9 +251,40 @@ def package_configurations():
       os.makedirs(packageFolder)
     except FileExistsError:
       pass
-    shutil.copy(os.path.join("scan", fileName, "Configure.sh"), packageFolder)
-    shutil.copy(os.path.join("scan", fileName, "frequency.txt"), packageFolder)
+
+    shutil.copy(os.path.join(sourceDir, "Configure.sh"), packageFolder)
+    shutil.copy(os.path.join(sourceDir, "frequency.txt"), packageFolder)
     shutil.copy(kernelPath, packageFolder)
+
+    kernelFolder = os.path.join(
+        "_xocc_Stencil_sdaccel_hw.dir", "impl", "build",
+        "system", "sdaccel_hw", "bitstream", "sdaccel_hw_ipi")
+    try:
+      os.makedirs(os.path.join(packageFolder, kernelFolder))
+    except FileExistsError:
+      pass
+    shutil.copy(os.path.join(sourceDir, kernelFolder, "vivado.log"),
+                os.path.join(packageFolder, kernelFolder))
+    try:
+      shutil.copy(os.path.join(sourceDir, kernelFolder, "vivado_warning.txt"),
+                  os.path.join(packageFolder, kernelFolder))
+    except FileNotFoundError:
+      pass
+
+    implFolder = os.path.join(
+        kernelFolder, "ipiimpl", "ipiimpl.runs", "impl_1")
+    try:
+      os.makedirs(os.path.join(packageFolder, implFolder))
+    except FileExistsError:
+      pass
+    shutil.copy(os.path.join(sourceDir, implFolder,
+                             "xcl_design_wrapper_utilization_placed.rpt"),
+                os.path.join(packageFolder, implFolder))
+    shutil.copy(os.path.join(sourceDir, implFolder,
+                             "xcl_design_wrapper_power_routed.rpt"),
+                os.path.join(packageFolder, implFolder))
+
+
     packagedSomething = True
   if packagedSomething:
     print("Kernels and configuration files packaged into \"scan_packaged\".")
@@ -262,7 +306,7 @@ def unpackage_configuration(conf):
               unpackageFolder)
   shutil.copy(os.path.join("scan_packaged", fileName, "sdaccel_hw.xclbin"),
               unpackageFolder)
-  run_build(conf, hardware=False)
+  run_build(conf, clean=False, hardware=False)
 
 def unpackage_configurations():
   unpackagedSomething = False
@@ -304,10 +348,12 @@ def benchmark(repetitions):
       os.makedirs(benchmarkFolder)
     except FileExistsError:
       pass
-    if run_process("make".split(), kernelFolder) != 0:
+    print("Running {}...".format(confStr))
+    if run_process("make".split(), kernelFolder, pipe=False) != 0:
       raise Exception(confStr + ": software build failed.")
     for i in range(repetitions):
-      if run_process("./ExecuteKernel".split(), kernelFolder) != 0:
+      if run_process("./ExecuteKernel no".split(),
+                     kernelFolder, pipe=False) != 0:
         raise Exception(confStr + ": kernel execution failed.")
       shutil.copy(os.path.join(kernelFolder, "sdaccel_profile_summary.csv"),
                   os.path.join(benchmarkFolder,
