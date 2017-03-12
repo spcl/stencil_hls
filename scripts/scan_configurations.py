@@ -301,8 +301,12 @@ def unpackage_configuration(conf):
     os.makedirs(unpackageFolder)
   except FileExistsError:
     pass
-  shutil.copy(os.path.join("scan_packaged", fileName, "Configure.sh"),
-              unpackageFolder)
+  with open(os.path.join("scan_packaged",
+                         fileName, "Configure.sh"), "r") as inFile:
+    with open(os.path.join(unpackageFolder, "Configure.sh"), "w") as outFile:
+      inText = inFile.read()
+      fixed = re.sub(" -DCMAKE_C(XX)?_COMPILER=[^ ]*", "", inText)
+      outFile.write(fixed)
   shutil.copy(os.path.join("scan_packaged", fileName, "frequency.txt"),
               unpackageFolder)
   shutil.copy(os.path.join("scan_packaged", fileName, "sdaccel_hw.xclbin"),
@@ -335,8 +339,6 @@ def benchmark(repetitions):
       continue
     confStr = conf_string(conf)
     folderName = "benchmark_" + confStr
-    if not conf:
-      continue
     kernelFolder = os.path.join("scan", fileName)
     kernelPath = os.path.join(kernelFolder, "sdaccel_hw.xclbin")
     if not os.path.exists(kernelPath):
@@ -346,11 +348,12 @@ def benchmark(repetitions):
     pattern = re.compile("(benchmark_[^_]+)_[0-9]+_([0-9]+_[0-9]+_[0-9]+)")
     benchmarkFolder = os.path.join("benchmarks",
                                    pattern.sub("\\1_{}_\\2".format(realClock),
-                                               folderName))
+                                   folderName))
     try:
       os.makedirs(benchmarkFolder)
     except FileExistsError:
       pass
+    shutil.copy(os.path.join(kernelFolder, "Configure.sh"), benchmarkFolder)
     print("Running {}...".format(confStr))
     if run_process("make".split(), kernelFolder, pipe=False) != 0:
       raise Exception(confStr + ": software build failed.")
