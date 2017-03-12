@@ -182,7 +182,10 @@ def extract_result_build(conf):
                            "vivado_warning.txt"), "r") as clockFile:
       warningText = clockFile.read()
       m = re.search("automatically changed to ([0-9]+) MHz", warningText)
-      clock = int(m.group(1))
+      if m:
+        clock = int(m.group(1))
+      else:
+        clock = conf.targetClock
   except FileNotFoundError:
     clock = conf.targetClock
   conf.consumption = Consumption(
