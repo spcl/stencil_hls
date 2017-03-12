@@ -197,7 +197,7 @@ def check_build_status(buildFolder):
       "impl", "build", "system", "sdaccel_hw", "bitstream")
   try:
     log = open(
-        os.path.join(confFolder, "log.out"), "r").read()
+        os.path.join(buildFolder, "log.out"), "r").read()
   except:
     return "no_build"
   try:
