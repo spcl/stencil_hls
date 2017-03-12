@@ -334,6 +334,8 @@ def unpackage_configurations():
 def benchmark(repetitions):
   for fileName in os.listdir("scan"):
     conf = get_conf(fileName)
+    if not conf:
+      continue
     confStr = conf_string(conf)
     folderName = "benchmark_" + confStr
     if not conf:
@@ -344,7 +346,7 @@ def benchmark(repetitions):
       continue
     with open(os.path.join(kernelFolder, "frequency.txt"), "r") as clockFile:
       realClock = clockFile.read()
-    pattern = re.compile("(build_(float|double))_[0-9]+_([0-9]+_[0-9]+_[0-9]+)")
+    pattern = re.compile("(benchmark_[^_]+)_[0-9]+_([0-9]+_[0-9]+_[0-9]+)")
     benchmarkFolder = os.path.join("benchmarks",
                                    pattern.sub("\\1_{}_\\2".format(realClock),
                                                folderName))
