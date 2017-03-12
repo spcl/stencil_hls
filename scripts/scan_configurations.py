@@ -148,7 +148,7 @@ def extract_result_build(conf):
     conf.consumption = Consumption(conf, "no_build", None, None, None, None,
                                    None, None)
     return
-  status = check_build_status(kernelFolder)
+  status = check_build_status(buildFolder)
   reportPath = os.path.join(
       implFolder, "xcl_design_wrapper_utilization_placed.rpt")
   if not os.path.isfile(reportPath):
@@ -182,18 +182,35 @@ def extract_result_build(conf):
                            "vivado_warning.txt"), "r") as clockFile:
       warningText = clockFile.read()
       m = re.search("automatically changed to ([0-9]+) MHz", warningText)
-      clock = int(m.group(1))
+      if m:
+        clock = int(m.group(1))
+      else:
+        clock = conf.targetClock
   except FileNotFoundError:
     clock = conf.targetClock
   conf.consumption = Consumption(
       conf, status, luts, ff, dsp, bram, power, clock)
 
-def check_build_status(kernelFolder):
+def check_build_status(buildFolder):
+  kernelFolder = os.path.join(
+      buildFolder, "_xocc_Stencil_sdaccel_hw.dir",
+      "impl", "build", "system", "sdaccel_hw", "bitstream")
+  try:
+    log = open(
+        os.path.join(buildFolder, "log.out"), "r").read()
+  except:
+    return "no_build"
   try:
     report = open(
         os.path.join(kernelFolder, "sdaccel_hw_ipi", "vivado.log")).read()
   except:
     return "no_build"
+  m = re.search("Detail Placement failed", log)
+  if m:
+    return "failed_placement"
+  m = re.search("Internal Data Exception", log)
+  if m:
+    return "crashed"
   m = re.search("auto frequency scaling failed", report)
   if m:
     return "failed_timing"
