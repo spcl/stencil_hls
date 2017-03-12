@@ -50,7 +50,10 @@ int main(int argc, char **argv) {
     auto kernel = context.MakeKernelFromBinary(
         "sdaccel_hw.xclbin", "Kernel", device0, device1, device0, device1);
     std::cout << "Executing kernel..." << std::flush;
-    std::cout << " Finished in " << kernel.ExecuteTask() << " seconds."
+    const auto elapsed = kernel.ExecuteTask();
+    std::cout << " Finished in " << elapsed << " seconds, ("
+              << std::setprecision(2)
+              << 1e-9 * kTotalCols * kRows * kTime * 4 / elapsed << " GOp/s)"
               << std::endl;
     device0.CopyToHost(memory0.begin());
     device1.CopyToHost(memory1.begin());
