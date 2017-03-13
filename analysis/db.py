@@ -52,15 +52,19 @@ class Configuration(Base):
   depth = Column(Integer)
   blocks = Column(Integer)
 
-  def __init__(self, boardName, targetClock, domainSize, timesteps, width,
-               depth, blocks):
+  def __init__(self, boardName, dataType, targetClock, domainSize, timesteps,
+               width, depth, blocks):
     self.boardName = boardName
+    self.dataType = dataType
     self.targetClock = targetClock
     self.domainSize = domainSize
     self.timesteps = timesteps
     self.width = width
     self.depth = depth
     self.blocks = blocks
+
+  def total_ops(self):
+    return self.domainSize*self.domainSize*self.timesteps
 
   def __repr__(self):
     return ("{" + ",".join(map(str, [
@@ -84,7 +88,9 @@ class Measurement(Base):
 
   id = Column(Integer, primary_key=True)
   timestamp = Column(DateTime)
-  configuration = Column(Integer, ForeignKey("configuration.id"))
+  configurationId = Column(Integer, ForeignKey("configuration.id"))
+  configuration = relationship("Configuration", backref="measurements",
+                               cascade_backrefs=False)
   timeKernel = Column(Float)
   timeCreateProgram = Column(Float)
   timeCreateContext = Column(Float)
@@ -113,6 +119,7 @@ def get_conf(boardName, folderName):
     return None
   with open(os.path.join(folderName, "Configure.sh"), "r") as confFile:
     confText = confFile.read();
+    dataType = re.search("-DSTENCIL_DATA_TYPE=([^ ]+)", confText).group(1)
     targetClock = float(re.search(
         "-DSTENCIL_TARGET_CLOCK=([0-9\.]+)", confText).group(1))
     domainSize = int(re.search("-DSTENCIL_ROWS=([0-9]+)", confText).group(1))
@@ -120,8 +127,8 @@ def get_conf(boardName, folderName):
     width = int(re.search("-DSTENCIL_DATA_WIDTH=([0-9]+)", confText).group(1))
     depth = int(re.search("-DSTENCIL_DEPTH=([0-9]+)", confText).group(1))
     blocks = int(re.search("-DSTENCIL_BLOCKS=([0-9]+)", confText).group(1))
-    return Configuration(boardName, targetClock, domainSize, timesteps, width,
-                         depth, blocks)
+    return Configuration(boardName, dataType, targetClock, domainSize,
+                         timesteps, width, depth, blocks)
 
 if __name__ == "__main__":
 

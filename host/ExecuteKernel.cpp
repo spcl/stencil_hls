@@ -55,14 +55,17 @@ int main(int argc, char **argv) {
               << std::setprecision(2)
               << 1e-9 * kTotalCols * kRows * kTime * 4 / elapsed << " GOp/s)"
               << std::endl;
-    device0.CopyToHost(memory0.begin());
-    device1.CopyToHost(memory1.begin());
+    if (verify) {
+      device0.CopyToHost(memory0.begin());
+      device1.CopyToHost(memory1.begin());
+    }
   } catch (std::runtime_error const &err) {
     std::cerr << "Execution failed with error: \"" << err.what() << "\"."
               << std::endl;
     return 1;
   }
   if (verify) {
+    std::cout << "Running verification...\n";
     std::vector<DataPack> result(kWriteSize);
     for (int r = 0; r < kRows / 2; ++r) {
       for (int c = 0; c < kCols; ++c) {
