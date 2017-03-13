@@ -96,10 +96,10 @@ class Measurement(Base):
   timeCreateContext = Column(Float)
   totalDataTransferred = Column(Float)
 
-  def __init__(self, timestamp, configuration, timeKernel, timeCreateProgram,
+  def __init__(self, timestamp, configurationId, timeKernel, timeCreateProgram,
                timeCreateContext, totalDataTransferred):
     self.timestamp = timestamp
-    self.configuration = configuration
+    self.configurationId = configurationId
     self.timeKernel = timeKernel
     self.timeCreateProgram = timeCreateProgram
     self.timeCreateContext = timeCreateContext
@@ -172,6 +172,7 @@ if __name__ == "__main__":
       session.add(conf)
     else:
       conf = q.one()
+    session.commit()
     for fileName in os.listdir(configDir):
       if not fileName.endswith(".csv"):
         continue
@@ -180,7 +181,7 @@ if __name__ == "__main__":
           "%Y-%m-%d_%H:%M:%S.%f")
       if session.query(Measurement).filter(
           Measurement.timestamp == timestamp,
-          Measurement.configuration == conf.id).count() > 0:
+          Measurement.configurationId == conf.id).count() > 0:
         continue
       with open(os.path.join(configDir, fileName), "r") as fileHandle:
         fileText = fileHandle.read()

@@ -69,15 +69,15 @@ if __name__ == "__main__":
   Base.metadata.create_all(engine)
   session = Session()
   boards = [
-    Board(name="7v3", frequency=250.0, bandwidth=10.66, compute=450,
+    Board(name="7v3", frequency=200.0, bandwidth=10.66, compute=214,
           bram=1470),
     # Board(name="vu115p", frequency=250.0, bandwidth=19.2, compute=1488,
     #       bram=2688),
     # Board(name="stratix10", frequency=800.0, bandwidth=256.0, compute=1440,
     #       bram=11271),
-    Board(name="vu37p", frequency=250.0, bandwidth=240, compute=1128,
+    Board(name="vu37p", frequency=200.0, bandwidth=120, compute=645,
           bram=4033),
-    Board(name="ku115", frequency=250.0, bandwidth=17.06, compute=690,
+    Board(name="ku115", frequency=200.0, bandwidth=17.06, compute=328,
           bram=2160),
   ]
   for board in boards:

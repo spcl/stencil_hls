@@ -3,16 +3,21 @@ from db import *
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import numpy as np
+from optimize import optimize
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
 
 if __name__ == "__main__":
 
-  if len(sys.argv) != 2:
-    print("Usage: ./plot.py <board name>")
+  if len(sys.argv) > 2:
+    print("Usage: ./plot.py [<path>]")
     sys.exit(1)
-  boardName = sys.argv[1]
+
+  boardName = "TUL-KU115"
+  maxCompute = 328
+
+  plt.rcParams.update({'font.size': 15})
 
   dbDir = os.path.dirname(os.path.realpath(__file__))
   dbPath = os.path.join(dbDir, "benchmarks.sqlite")
@@ -38,8 +43,10 @@ if __name__ == "__main__":
     sys.exit(1)
 
   handles = []
-  types = ["float", "double"]
-  colors = ["darkgreen", "navy"]
+  handlesOverhead = []
+  optHandles = []
+  types = ["float"]
+  colors = ["darkgreen"]
   for (dataType, color) in zip(types, colors):
     confs = []
     for width in session.query(Configuration.width).filter(
@@ -58,30 +65,66 @@ if __name__ == "__main__":
       confs.append(maxConf)
     confs = sorted(confs, key=lambda c: c.width)
     if len(confs) > 0:
-      x = []
-      y = []
-      for conf in confs:
+      width = []
+      perf = []
+      perfOverhead = []
+      for i, conf in enumerate(confs):
         time = np.array(session.query(Measurement.timeKernel).filter(
-            Measurement.configurationId == conf.id).all())
-        x.append(ticks[conf.width])
-        y.append(1e-9*conf.total_ops() / time)
-      bp = ax.boxplot(y, positions=x, notch=True)
-      for l in bp["whiskers"]:
-        l.set(color=color, lw=2, linestyle="--", dashes=(2, 2))
-      for l in bp["caps"]:
-        l.set(color=color, lw=2)
-      for l in bp["medians"]:
-        l.set(lw=2)
-      for l in bp["fliers"]:
-        l.set(color=color, lw=2)
-      for l in bp["boxes"]:
-        l.set(color=color, lw=2)
-      handles.append(mlines.Line2D([], [], color=color, lw=2))
+            Measurement.configurationId == conf.id).all()).flatten()/1000
+        timeProgram = np.array(session.query(
+            Measurement.timeCreateProgram).filter(
+                Measurement.configurationId == conf.id).all()).flatten()/1000
+        timeContext = np.array(session.query(
+            Measurement.timeCreateContext).filter(
+                Measurement.configurationId == conf.id).all()).flatten()/1000
+        timeOverhead = time + timeProgram + timeContext
+        width.append(ticks[conf.width])
+        perf.append(1e-9*conf.total_ops() / time)
+        perfOverhead.append(1e-9*conf.total_ops() / timeOverhead)
+        perfMax = optimize(
+            [conf.targetClock],
+            [1e-3 * conf.width * conf.targetClock * (
+                4 if dataType == "float" else 8)],
+            [maxCompute],
+            [board.bram],
+            512)[0]
+        peak = 1e-3*perfMax.performance()
+        optHandle = ax.plot([ticks[conf.width]-0.1, ticks[conf.width]+0.1],
+                            [peak, peak], lw=2,
+                            color=color, linestyle="--")
+      plot0 = ax.plot(width, [np.median(p) for p in perf], "+", color=color,
+                      markersize=13, markeredgewidth=2)
+      plot1 = ax.plot(width, [np.median(p) for p in perfOverhead], "o",
+                      color=color, markersize=10, markeredgewidth=2,
+                      fillstyle="none")
+      # bp0 = ax.boxplot(perf, positions=width, notch=True)
+      # bp1 = ax.boxplot(perfOverhead, positions=width, notch=True)
+      optHandles.append(optHandle[0])
+      # for bp in [bp0, bp1]:
+      #   for l in bp["whiskers"]:
+      #     l.set(color=color, lw=2, linestyle="--", dashes=(2, 2))
+      #   for l in bp["caps"]:
+      #     l.set(color=color, lw=2)
+      #   for l in bp["medians"]:
+      #     l.set(lw=2)
+      #   for l in bp["fliers"]:
+      #     l.set(color=color, lw=2)
+      #   for l in bp["boxes"]:
+      #     l.set(color=color, lw=2)
+      handles.append(mlines.Line2D([], [], color=color, marker="+",
+                     linestyle="none", markersize=13, markeredgewidth=2))
+      handlesOverhead.append(mlines.Line2D([], [], color=color, marker="o",
+                             linestyle="none", markersize=10, fillstyle="none"))
 
   plt.xticks(list(ticks.values()), list(ticks.keys()))
   ax.set_xlim((0.5, len(widths)+0.5))
-  ax.legend(handles, types, loc=2)
+  ax.legend(handles + handlesOverhead + optHandles,
+            types + [t + " with overhead" for t in types] +
+            [t + " optimized" for t in types], loc=2,
+            fontsize=13)
   ax_flops.set_ylim((ax.get_ylim()[0]*4, ax.get_ylim()[1]*4))
   ax_flops.set_yticks(4*ax.get_yticks())
-  fig.show()
-  input("Press return to exit...")
+  if len(sys.argv) >= 2:
+    fig.savefig(sys.argv[1], bbox_inches="tight")
+  else:
+    plt.show()
