@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import os, sys
 from sqlalchemy import Column, Integer, Float, String, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
@@ -37,6 +37,13 @@ class Optimized(Base):
   dataWidthOpt = Column(Integer)
   tileSizeOpt = Column(Integer)
 
+  def __init__(self, frequency, bandwidth, compute, bram, bramDepth):
+    self.frequency = frequency
+    self.bandwidth = bandwidth
+    self.compute = compute
+    self.bram = bram
+    self.bramDepth = bramDepth
+
   def efficiency(self):
     return self.tileSizeOpt / (self.tileSizeOpt + 2 * self.depthOpt)
 
@@ -69,15 +76,15 @@ if __name__ == "__main__":
   Base.metadata.create_all(engine)
   session = Session()
   boards = [
-    Board(name="7v3", frequency=200.0, bandwidth=10.66, compute=214,
+    Board(name="7v3", frequency=200.0, bandwidth=10.66, compute=450,
           bram=1470),
     # Board(name="vu115p", frequency=250.0, bandwidth=19.2, compute=1488,
     #       bram=2688),
     # Board(name="stratix10", frequency=800.0, bandwidth=256.0, compute=1440,
     #       bram=11271),
-    Board(name="vu37p", frequency=200.0, bandwidth=120, compute=645,
+    Board(name="vu37p", frequency=200.0, bandwidth=120, compute=1215,
           bram=4033),
-    Board(name="ku115", frequency=200.0, bandwidth=17.06, compute=328,
+    Board(name="ku115", frequency=200.0, bandwidth=17.06, compute=690,
           bram=2160),
   ]
   for board in boards:

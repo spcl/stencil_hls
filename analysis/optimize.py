@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from opt_db import Optimized
 import save_to_db
 import sys
@@ -86,6 +86,6 @@ if __name__ == "__main__":
   if len(opts) > 10:
     print("Successfully optimized {} configurations.".format(len(opts)))
   else:
-    print("Successfuly optimized {} configurations...".format(len(opts)))
+    print("Successfully optimized {} configuration...".format(len(opts)))
     for opt in opts:
       print(opt, "=", opt.performance(), "GStencil/s")

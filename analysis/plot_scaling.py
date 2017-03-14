@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
@@ -33,7 +33,7 @@ def plot_compute(ax, session):
     data = aos_to_soa(session.query(Optimized).filter(
         Optimized.bram == board.bram, Optimized.bandwidth == board.bandwidth,
         Optimized.frequency == board.frequency).filter(
-            Optimized.compute <= 1200).all())
+            Optimized.compute <= 1400).all())
     ax.plot(data["compute"], 1e-3*data["perf"], **linestyle,
             label="{:.0f} MHz, {} GB/s, {} RAM".format(
                 board.frequency, board.bandwidth, board.bram))

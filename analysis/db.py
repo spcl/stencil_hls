@@ -66,6 +66,12 @@ class Configuration(Base):
   def total_ops(self):
     return self.domainSize*self.domainSize*self.timesteps
 
+  def expected_performance(self):
+    tileSize = self.domainSize / (self.blocks * self.width)
+    haloSize = int(int(self.width + self.depth - 1) / self.width)
+    efficiency = tileSize / (tileSize + 2 * haloSize)
+    return 1e-3 * self.targetClock * self.depth * self.width * efficiency
+
   def __repr__(self):
     return ("{" + ",".join(map(str, [
                 self.boardName, self.targetClock, self.domainSize,
