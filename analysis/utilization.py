@@ -64,7 +64,7 @@ def utilization(operations, args, verbose=True):
     del args["board"]
   else:
     boardName = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                             "boards", "ADM-PCIE-7V3.board")
+                             "boards", "TUL-KU115.board")
   with open(boardName) as boardFile:
     board = json.load(boardFile)
 
@@ -73,7 +73,7 @@ def utilization(operations, args, verbose=True):
     del args["costs"]
   else:
     costsPath = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                             "costs", "Virtex7Datasheet.costs")
+                             "costs", "KintexUltrascaleDatasheet.costs")
 
   if "maxluts" in args:
     maxLut = max(min(float(args["maxluts"]), 1), 0)
@@ -97,20 +97,7 @@ def utilization(operations, args, verbose=True):
     clock = 1e6*max(0, float(args["clock"]))
     del args["clock"]
   else:
-    clock = 200e6
-
-  if "sdaccel" in args and bool(args["sdaccel"]) == True:
-    sdaccel = True
-    if verbose:
-      print("Assuming SDAccel: kernel will be clocked at 200 MHz and resource " +
-            "usage constrained to 70% of the board.")
-    clock = 200e6
-    maxLut = min(maxLut, 0.7)
-    maxDsp = min(maxDsp, 0.7)
-    maxBram = min(maxBram, 0.7)
-    del args["sdaccel"]
-  else:
-    sdaccel = False
+    clock = 300e6
 
   if "latex" in args:
     useLatex = True
@@ -173,52 +160,15 @@ def utilization(operations, args, verbose=True):
               1e2*utilization["bramCount"]/board["compute"]["bramCount"],
               1e2*utilization["bramCount"]/(maxBram*board["compute"]["bramCount"])))
 
-  if roofline:
-
-    import matplotlib.pyplot as plt
-    import matplotlib.ticker as ticker
-    from _plotstyle import new_plot
-
-    memoryBandwidth = (board["memory"]["clock"] *
-                       board["memory"]["width"] *
-                       (board["memory"]["dimms"] if not sdaccel else 1)) / 8 # Convert to bytes
-
-    # Plot roofline
-    if useLatex:
-      from _plotstyle import new_plot
-      fig, ax = new_plot()
-    else:
-      fig, ax = plt.subplots()
-    ax.set_xscale("log", basex=2)
-    ax.set_yscale("log")
-    match = re.search("(.+)\.[^\.]*", operationsFilename)
-    if match:
-      title = match.group(1)
-    else:
-      title = ""
-    ax.set_title(title if not sdaccel else "SDAccel " + title)
-    ax.set_ylabel("Performance [GOP/s]")
-    ax.set_xlabel("Computational intensity [OP/byte]")
-    ax.get_yaxis().set_major_formatter(ticker.ScalarFormatter())
-    draw_roofline(ax, peak, memoryBandwidth)
-    # ax.legend(loc=4)
-    ax.set_xticks(ax.get_xticks()[1:-1])
-    if rooflineFilename:
-      fig.savefig(rooflineFilename, bbox_inches="tight")
-    else:
-      fig.show()
-      input()
-
   return bestPerm, nInstances, nOps, peak
 
 if __name__ == "__main__":
 
   if len(sys.argv) < 2 or sys.argv[1] in ["-help", "--help"]:
     print("Usage: <operations file>\n" +
-          "  [-board=<path to board specification [Default: ADM-PCIE-7V3.board]>]"
-          + "\n  [-costs=<path to cost specifications [Default: Virtex7Datasheet.costs]>]"
-          + "\n  [-clock=<clock rate in MHz [Default: 200]]"
-          + "\n  [-sdaccel=<assume SDAccel restrictions [Default: false]>]"
+          "  [-board=<path to board specification [Default: TUL-KU115.board]>]"
+          + "\n  [-costs=<path to cost specifications [Default: KintexUltrascaleDatasheet.costs]>]"
+          + "\n  [-clock=<clock rate in MHz [Default: 300]]"
           + "\n  [-maxluts=<max fraction of LUTs to consume [Default: 1.0]>]"
           + "\n  [-maxdsps=<max fraction of DSPs to consume [Default: 1.0]>]"
           + "\n  [-maxbrams=<max fraction of BRAMs to consume [Default: 1.0]>]"
