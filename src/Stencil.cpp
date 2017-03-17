@@ -359,6 +359,30 @@ WriteTime:
   }
 }
 
+void ComputeNothing(hlslib::Stream<DataPack> &input,
+                    hlslib::Stream<DataPack> &output) {
+
+DummyTime:
+  for (int t = 0; t < kTimeFolded; ++t) {
+  DummyBlocks:
+    for (int b = 0; b < kBlocks; ++b) {
+    DummyRows:
+      for (int r = 0; r < kRows; ++r) {
+      DummyCols:
+        for (int c = 0; c < kColsPerBlock + 2*kHalo; ++c) {
+          #pragma HLS PIPELINE
+          #pragma LOOP_FLATTEN
+          if (c >= kHalo && c < kColsPerBlock + kHalo) {
+            hlslib::WriteBlocking(output, hlslib::ReadBlocking(input),
+                                  kPipeDepth);
+          }
+        }
+      }
+    }
+  }
+
+}
+
 void Kernel(DataPack const *memIn0, DataPack const *memIn1, DataPack *memOut0,
             DataPack *memOut1) {
 
@@ -405,6 +429,7 @@ void Kernel(DataPack const *memIn0, DataPack const *memIn1, DataPack *memOut0,
   Read(memIn0, pipeIn0);
   Read(memIn1, pipeIn1);
   Demux(pipeIn0, pipeIn1, pipeIn);
+  // ComputeNothing(pipeIn, pipeOut);
   UnrollCompute<kDepth>(pipeIn, pipeOut);
   Mux(pipeOut, pipeOut0, pipeOut1);
   Write(pipeOut0, memOut0);
