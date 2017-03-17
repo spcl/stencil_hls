@@ -42,6 +42,8 @@ int main(int argc, char **argv) {
   std::cout << "Timesteps:      " << kTime << " / " << kTimeFolded
             << " folded\n";
   std::cout << "Total cycles:   " << CyclesRequired() << " (plus latency)\n";
+  std::cout << "Expected time:  " << CyclesRequired() / (1e6 * clock)
+            << " seconds.\n";
   std::cout << "Clock rate:     " << clock << " MHz";
   if (clock != kTargetClock) {
     std::cout << " (target " << kTargetClock << " MHz)";
