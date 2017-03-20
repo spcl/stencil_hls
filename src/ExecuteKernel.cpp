@@ -1,5 +1,6 @@
 #include "hlslib/SDAccel.h"
 #include "Stencil.h"
+#include "Reference.h"
 #include <string>
 #include <iomanip>
 #include <chrono>
@@ -59,9 +60,12 @@ int main(int argc, char **argv) {
         1e-9 *
         std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin)
             .count();
-    std::cout << " Done.\nTransferred " << 1e-9 * transferred
-              << " GB in " << elapsed << " seconds, bandwidth "
-              << (1e-9 * transferred / elapsed) << " GB/s" << std::endl;
+    std::cout << " Done.\nMoved " << 1e-9 * transferred << " GB in " << elapsed
+              << " seconds, bandwidth " << (1e-9 * transferred / elapsed)
+              << " GB/s\nEvaluated " << kTimeTotal * kRows * kCols
+              << " cells in " << elapsed << " seconds, performance "
+              << 4e-9 * (kTimeTotal * kRows * kCols) / elapsed << " GOp/s"
+              << std::endl;
     if (verify) {
       device.CopyToHost(host.begin());
     }
@@ -74,32 +78,40 @@ int main(int argc, char **argv) {
 
   // Verification
   if (verify) {
-    for (int offset = 0; offset < 2 * kTotalElementsMemory;
-         offset += kTotalElementsMemory) {
-      for (int b = 0; b < kBlocks; ++b) {
-        for (int r = 0; r < kRows; ++r) {
-          for (int m = 0; m < kBlockWidthMemory; ++m) {
-            const int index = offset + r * kBlockWidthMemory * kBlocks +
-                              b * kBlockWidthMemory + m;
-            const Data_t expected =
-                r * kBlockWidthMemory * kBlocks + b * kBlockWidthMemory + m +
-                ((offset == 0) ? kTimeFolded : (kTimeFolded - 1));
-            for (int k = 0; k < kKernelPerMemory; ++k) {
-              const Kernel_t elem = host[index][k];
-              for (int w = 0; w < kMemoryWidth; ++w) {
-                if (elem[w] != expected) {
-                  std::cerr << "Mismatch at (" << r << ", "
-                            << m * kMemoryWidth + k * kKernelWidth + w
-                            << "): " << elem[w] << " (should be "
-                            << expected << ")" << std::endl;
-                  return 1;
-                }
-              }
+    // int correct = 0;
+    // int mismatches = 0;
+    const auto reference = Reference(std::vector<Data_t>(kRows * kCols, 0));
+    const int offset = (kTimeFolded % 2 == 0) ? 0 : kTotalElementsMemory;
+    for (int r = 0; r < kRows; ++r) {
+      for (int c = 0; c < kBlockWidthMemory * kBlocks; ++c) {
+        const int index = r * kBlockWidthMemory * kBlocks + c;
+        for (int k = 0; k < kKernelPerMemory; ++k) {
+          const Kernel_t elem = host[offset + index][k];
+          for (int w = 0; w < kKernelWidth; ++w) {
+            const auto expected =
+                reference[kMemoryWidth * index + kKernelWidth * k + w];
+            const auto actual = elem[w];
+            const auto diff = std::fabs(expected - actual);
+            if (diff > 1e-4) {
+              std::cerr << "Mismatch at (" << r << ", "
+                        << c * kMemoryWidth + k * kKernelWidth + w
+                        << "): " << actual << " (should be " << expected << ")"
+                        << std::endl;
+              // ++mismatches;
+              return 1;
+            } else {
+              // std::cout << "Correct at (" << r << ", "
+              //           << c * kMemoryWidth + k * kKernelWidth + w
+              //           << "): " << elem[w] << "\n";
+              // ++correct;
             }
           }
         }
       }
     }
+    // std::cout << "Correct: " << correct << "\nMismatches: " << mismatches
+    //           << std::endl;
+    return 0;
   }
 
   return 0;

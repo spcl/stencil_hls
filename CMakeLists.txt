@@ -65,7 +65,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 # Dependencies
 set(STENCIL_HLS_DEPENDS
     include/Stencil.h.in
+    include/Reference.h
     src/Stencil.cpp
+    src/Reference.cpp
     include/hlslib/SDAccel.h
     include/hlslib/DataPack.h
     include/hlslib/Utility.h
@@ -86,7 +88,7 @@ add_custom_target(synthesis
 enable_testing()
 find_package(Threads)
 if (Threads_FOUND)
-  add_executable(Testbench src/Testbench.cpp src/Stencil.cpp)
+  add_executable(Testbench src/Testbench.cpp src/Stencil.cpp src/Reference.cpp)
   target_link_libraries(Testbench ${STENCIL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
   add_test(Testbench Testbench)
 else()
@@ -94,7 +96,7 @@ else()
 endif()
 
 # SDAccel
-add_executable(ExecuteKernel.exe src/ExecuteKernel.cpp)
+add_executable(ExecuteKernel.exe src/ExecuteKernel.cpp src/Reference.cpp)
 target_link_libraries(ExecuteKernel.exe ${STENCIL_LIBS})
 set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS} 
   -O3
