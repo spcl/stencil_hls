@@ -37,8 +37,10 @@ else()
 endif()
 set(STENCIL_KEEP_INTERMEDIATE OFF CACHE STRING
     "Keep intermediate SDAccel files")
+set(STENCIL_ENTRY_FUNCTION "Jacobi")
 
 # Domain configuration
+set(STENCIL_DATA_TYPE "float" CACHE STRING "Data type.")
 set(STENCIL_TIME 32 CACHE STRING "Number of timesteps.")
 set(STENCIL_MEMORY_WIDTH 16 CACHE STRING "Width of memory port.")
 set(STENCIL_KERNEL_WIDTH 4 CACHE STRING "Width of kernel data path.")
@@ -75,7 +77,7 @@ set(STENCIL_HLS_DEPENDS
 
 # Configure files 
 set(STENCIL_KERNEL_STRING
-    "jacobi_${STENCIL_DATA_TYPE}_${STENCIL_KERNEL_WIDTH}_${STENCIL_KERNEL_DEPTH}_${STENCIL_DEPTH}_${STENCIL_ROWS}x${STENCIL_COLS}.xclbin")
+  "jacobi_${STENCIL_DATA_TYPE}_w${STENCIL_KERNEL_WIDTH}_d${STENCIL_DEPTH}_${STENCIL_ROWS}x${STENCIL_COLS}_b${STENCIL_BLOCKS}.xclbin")
 configure_file(include/Stencil.h.in Stencil.h)
 configure_file(scripts/Synthesis.tcl.in Synthesis.tcl)
 
@@ -102,11 +104,11 @@ set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS}
   -O3
   # Includes
   -I${CMAKE_BINARY_DIR}
-  -I${CMAKE_SOURCE_DIR}
+  -I${CMAKE_SOURCE_DIR}/include
   # Source
   ${CMAKE_SOURCE_DIR}/src/Stencil.cpp
   # Flags
-  --kernel Jacobi 
+  --kernel ${STENCIL_ENTRY_FUNCTION} 
   --xdevice ${STENCIL_DSA_STRING}
   --xp prop:kernel.${STENCIL_ENTRY_FUNCTION}.kernel_flags="${CMAKE_CXX_FLAGS} -DHLSLIB_SYNTHESIS -DSTENCIL_SYNTHESIS"
   --kernel_frequency ${STENCIL_TARGET_CLOCK})

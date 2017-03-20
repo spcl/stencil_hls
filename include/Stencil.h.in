@@ -4,7 +4,7 @@
 #include <ap_int.h>
 #include <hlslib/DataPack.h>
 
-using Data_t = float;
+using Data_t = ${STENCIL_DATA_TYPE};
 
 constexpr long kTimeTotal = ${STENCIL_TIME};
 constexpr long kDepth = ${STENCIL_DEPTH};
