@@ -49,7 +49,8 @@ int main(int argc, char **argv) {
 
     const auto readSize =
         static_cast<float>(kTimeFolded) * kTotalInputMemory * sizeof(Memory_t);
-    const auto writeSize = static_cast<float>(kTimeFolded) * sizeof(Memory_t);
+    const auto writeSize = static_cast<float>(kTimeFolded) *
+                           kTotalElementsMemory * sizeof(Memory_t);
     const auto transferred = readSize + writeSize;
 
     std::cout << "Executing kernel..." << std::flush;
