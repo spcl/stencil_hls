@@ -37,7 +37,6 @@ struct UnsignedIntType<sizeof(unsigned long)> {
 
 template <typename T, int width>
 class DataPackProxy {
-  using Pack_t = typename UnsignedIntType<sizeof(T)>::T;
   static constexpr int kBits = 8 * width;
 public:
   DataPackProxy(DataPack<T, width> &data, size_t index)
@@ -70,7 +69,7 @@ class DataPack {
 
   static_assert(width > 0, "Width must be positive");
 
-  using Pack_t = typename UnsignedIntType<sizeof(T)>::T;
+  using Pack_t = ap_uint<8 * sizeof(T)>;
   static constexpr int kBits = 8 * sizeof(T);
 
 public:

@@ -313,6 +313,9 @@ public:
     return commandQueue_;
   }
 
+  template <typename T, Access access>
+  Buffer<T, access> MakeBuffer();
+
   template <typename T, Access access, typename... Ts>
   Buffer<T, access> MakeBuffer(MemoryBank memoryBank, Ts... args);
 
@@ -337,13 +340,21 @@ template <typename T, Access access>
 class Buffer {
 
 public:
+  Buffer() : context_(nullptr), nElements_(0) {}
+
+  Buffer(Buffer<T, access> const &other) = delete; 
+
+  Buffer(Buffer<T, access> &&other) : Buffer() {
+    swap(*this, other);
+  }
+
   /// Allocate and copy to device.
   template <typename IteratorType, typename = typename std::enable_if<
                                        IsIteratorOfType<IteratorType, T>() &&
                                        IsRandomAccess<IteratorType>()>::type>
   Buffer(Context const &context, MemoryBank memoryBank, IteratorType begin,
          IteratorType end)
-      : context_(context), nElements_(std::distance(begin, end)) {
+      : context_(&context), nElements_(std::distance(begin, end)) {
 
     auto extendedPointer = CreateExtendedPointer(begin, memoryBank);
 
@@ -362,7 +373,7 @@ public:
 
     cl_int errorCode;
     devicePtr_ =
-        clCreateBuffer(context_.context(), flags, sizeof(T) * nElements_,
+        clCreateBuffer(context_->context(), flags, sizeof(T) * nElements_,
                        &extendedPointer, &errorCode);
 
     if (errorCode != CL_SUCCESS) {
@@ -374,7 +385,7 @@ public:
 
   /// Allocate device memory but don't perform any transfers.
   Buffer(Context const &context, MemoryBank memoryBank, size_t nElements)
-      : context_(context), nElements_(nElements) {
+      : context_(&context), nElements_(nElements) {
 
     T *dummy = nullptr;
     auto extendedPointer = CreateExtendedPointer(dummy, memoryBank);
@@ -394,7 +405,7 @@ public:
 
     cl_int errorCode;
     devicePtr_ =
-        clCreateBuffer(context_.context(), flags, sizeof(T) * nElements_,
+        clCreateBuffer(context_->context(), flags, sizeof(T) * nElements_,
                        &extendedPointer, &errorCode);
 
     if (errorCode != CL_SUCCESS) {
@@ -403,15 +414,23 @@ public:
       
   }
 
-  Buffer(Buffer<T, access> &&) = default;
-  Buffer<T, access> &operator=(Buffer<T, access> &&) = default;
-  // No copies can be made as each instance has unique ownership of the pointer
-  // to device memory
-  Buffer(Buffer<T, access> const &) = delete;
-  Buffer<T, access> &operator=(Buffer<T, access> const &) = delete;
+  friend void swap(Buffer<T, access> &first, Buffer<T, access> &second) {
+    std::swap(first.context_, second.context_);
+    std::swap(first.devicePtr_, second.devicePtr_);
+    std::swap(first.nElements_, second.nElements_);
+  }
+
+  Buffer<T, access> &operator=(Buffer<T, access> const &other) = delete;
+
+  Buffer<T, access> &operator=(Buffer<T, access> &&other) {
+    swap(*this, other);
+    return *this;
+  }
 
   ~Buffer() {
-    clReleaseMemObject(devicePtr_);
+    if (nElements_ > 0) {
+      clReleaseMemObject(devicePtr_);
+    }
   }
 
   template <typename IteratorType,
@@ -423,9 +442,10 @@ public:
 
     // We cannot pass a const pointer to clCreateBuffer even though the function
     // should be read only, so we allow a const_cast
-    auto errorCode = clEnqueueWriteBuffer(
-        context_.commandQueue(), devicePtr_, CL_TRUE, 0, sizeof(T) * nElements_,
-        const_cast<T *>(&(*source)), 0, nullptr, nullptr);
+    auto errorCode =
+        clEnqueueWriteBuffer(context_->commandQueue(), devicePtr_, CL_TRUE, 0,
+                             sizeof(T) * nElements_,
+                             const_cast<T *>(&(*source)), 0, nullptr, nullptr);
 
     if (errorCode != CL_SUCCESS) {
       throw std::runtime_error("Failed to copy data to device.");
@@ -438,7 +458,7 @@ public:
                 IsIteratorOfType<IteratorType, T>() &&
                 IsRandomAccess<IteratorType>()>::type>
   void CopyToHost(IteratorType target) {
-    auto errorCode = clEnqueueReadBuffer(context_.commandQueue(), devicePtr_,
+    auto errorCode = clEnqueueReadBuffer(context_->commandQueue(), devicePtr_,
                                          CL_TRUE, 0, sizeof(T) * nElements_,
                                          &(*target), 0, nullptr, nullptr);
     if (errorCode != CL_SUCCESS) {
@@ -482,7 +502,7 @@ private:
     return extendedPointer;
   }
 
-  Context const &context_;
+  Context const *context_;
   cl_mem devicePtr_{};
   size_t nElements_;
 
@@ -645,6 +665,11 @@ private:
   cl_kernel kernel_{};
 
 }; // End class Kernel
+
+template <typename T, Access access>
+Buffer<T, access> Context::MakeBuffer() {
+  return Buffer<T, access>();
+}
 
 template <typename T, Access access, typename... Ts>
 Buffer<T, access> Context::MakeBuffer(MemoryBank memoryBank, Ts... args) {

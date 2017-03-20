@@ -6,43 +6,67 @@ project(Stencil CXX)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 # Target platform
-set(STENCIL_PART_NAME "xcku115-flvb2104-2-e" CACHE STRING "Vivado HLS part name.") 
-set(STENCIL_DSA_STRING "xilinx:tul-pcie3-ku115:2ddr:3.1" CACHE STRING "SDAccel DSA string")
-set(STENCIL_KEEP_INTERMEDIATE OFF CACHE STRING "Keep intermediate SDAccel files")
-set(STENCIL_TARGET_TIMING 4 CACHE STRING "Target timing for HLS in nanoseconds. Will not be used when building the kernel.")
-set(STENCIL_TARGET_CLOCK 250 CACHE STRING "Target clock when building hardware kernel.")
-set(STENCIL_USE_SINGLE_DIMM OFF CACHE STRING "Restrict to using a single DDR DIMM")
+set(STENCIL_TARGET "TUL-KU115-XPR" CACHE STRING "Target board for benchmark.")
+if (STENCIL_TARGET STREQUAL "TUL-KU115")
+  set(STENCIL_PART_NAME "xcku115-flvb2104-2-e") 
+  set(STENCIL_DSA_STRING "xilinx:tul-pcie3-ku115:2ddr:3.1")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTENCIL_TUL_KU115")
+  set(STENCIL_DIMMS 2)
+elseif (STENCIL_TARGET STREQUAL "TUL-KU115-XPR")
+  set(STENCIL_PART_NAME "xcku115-flvb2104-2-e") 
+  set(STENCIL_DSA_STRING "xilinx:xil-accel-rd-ku115:4ddr-xpr:3.2")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTENCIL_TUL_KU115_XPR")
+  set(STENCIL_DIMMS 4)
+elseif (STENCIL_TARGET STREQUAL "ADM-KU3")
+  set(STENCIL_PART_NAME "xcku060-ffva1156-2-e") 
+  set(STENCIL_DSA_STRING "xilinx:adm-pcie-ku3:2ddr:3.2")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTENCIL_ADM_KU3")
+  set(STENCIL_DIMMS 2)
+elseif (STENCIL_TARGET STREQUAL "ADM-KU3-XPR")
+  set(STENCIL_PART_NAME "xcku060-ffva1156-2-e") 
+  set(STENCIL_DSA_STRING "xilinx:adm-pcie-ku3:2ddr-xpr:3.2")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTENCIL_ADM_KU3_XPR")
+  set(STENCIL_DIMMS 2)
+elseif (STENCIL_TARGET STREQUAL "ADM-7V3")
+  set(STENCIL_PART_NAME "xc7vx690tffg1157-2") 
+  set(STENCIL_DSA_STRING "xilinx:adm-pcie-7v3:1ddr:3.0")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTENCIL_ADM_7V3")
+  set(STENCIL_DIMMS 1)
+else()
+  message(FATAL_ERROR "Unknown target \"${STENCIL_TARGET}\".")
+endif()
+set(STENCIL_KEEP_INTERMEDIATE OFF CACHE STRING
+    "Keep intermediate SDAccel files")
 
 # Domain configuration
-set(STENCIL_DATA_TYPE "float" CACHE STRING "Data type used for computations.")
-set(STENCIL_DATA_WIDTH 4 CACHE STRING "Width of data path in number of elements.")
-set(STENCIL_ROWS 256 CACHE STRING "Number of rows.")
-set(STENCIL_COLS 256 CACHE STRING "Number of cols. Will be divided by data width * number of blocks.")
-set(STENCIL_TIME 128 CACHE STRING "Number of timesteps to evaluate. Will be folded by the stencil depth.")
-set(STENCIL_DEPTH 4 CACHE STRING "Number of consecutive compute elements, deciding the folding factor of the number of timesteps.")
-set(STENCIL_BLOCKS 4 CACHE STRING "Number of tiles to divide the column into.")
+set(STENCIL_TIME 32 CACHE STRING "Number of timesteps.")
+set(STENCIL_MEMORY_WIDTH 16 CACHE STRING "Width of memory port.")
+set(STENCIL_KERNEL_WIDTH 4 CACHE STRING "Width of kernel data path.")
+set(STENCIL_DEPTH 8 CACHE STRING "Depth of pipeline (determines halo size.)")
+set(STENCIL_BLOCKS 4 CACHE STRING "Number of blocks.")
+set(STENCIL_ROWS 8192 CACHE STRING "Number of rows.")
+set(STENCIL_COLS 8192 CACHE STRING "Number of columns.")
+set(STENCIL_TARGET_CLOCK 200 CACHE STRING "Target clock speed.")
+set(STENCIL_HLS_TARGET_TIMING 5 CACHE STRING "Target timing of HLS.")
 
-# External dependencies
+# Dependencies
 find_package(SDAccel REQUIRED)
 if (NOT SDACCEL_FOUND)
   message(FATAL_ERROR "SDAccel not found.")
 else()
   include_directories(${SDACCEL_INCLUDE_DIR})
 endif()
-include_directories(${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/include ${SDACCEL_INCLUDE_DIRS} ${SDACCEL_ROOT_DIR}/Vivado_HLS/include)
-find_package(Threads REQUIRED)
+include_directories(${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR} ${SDACCEL_INCLUDE_DIRS} ${SDACCEL_ROOT_DIR}/Vivado_HLS/include)
 set(STENCIL_LIBS ${SDACCEL_LIBS})
 
 # Compilation flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -ftemplate-depth-1024")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-# Target dependencies 
+# Dependencies
 set(STENCIL_HLS_DEPENDS
     include/Stencil.h.in
     src/Stencil.cpp
-    include/hlslib/SDAccel.h
-    include/hlslib/DataPack.h
-    include/hlslib/Stream.h)
+    hlslib/OpenCL.h)
 
 # Configure files 
 configure_file(include/Stencil.h.in Stencil.h)
@@ -53,41 +77,46 @@ add_custom_target(synthesis
   COMMAND ${SDACCEL_VIVADO_HLS} -f Synthesis.tcl
   DEPENDS ${STENCIL_HLS_DEPENDS})
 
-# Executables
-add_executable(Stats src/Stats.cpp)
-target_link_libraries(Stats ${STENCIL_LIBS})
-
 # Testing
 enable_testing()
-add_executable(Testbench test/Testbench.cpp src/Stencil.cpp)
-target_link_libraries(Testbench ${STENCIL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
-add_test(Testbench Testbench)
+find_package(Threads)
+if (Threads_FOUND)
+  add_executable(Testbench src/Testbench.cpp src/Stencil.cpp)
+  target_link_libraries(Testbench ${STENCIL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+  add_test(Testbench Testbench)
+else()
+  message(WARNING "Threads not found. Testbench will be unavailable.")
+endif()
 
 # SDAccel
-add_executable(ExecuteKernel host/ExecuteKernel.cpp)
-target_link_libraries(ExecuteKernel ${STENCIL_LIBS} ${SDACCEL_LIBS})
+add_executable(ExecuteKernel.exe src/ExecuteKernel.cpp)
+target_link_libraries(ExecuteKernel.exe ${STENCIL_LIBS})
 set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS} 
   -O3
   # Includes
   -I${CMAKE_BINARY_DIR}
-  -I${CMAKE_SOURCE_DIR}/include
+  -I${CMAKE_SOURCE_DIR}
   # Source
   ${CMAKE_SOURCE_DIR}/src/Stencil.cpp
   # Flags
-  --kernel Kernel 
+  --kernel Jacobi 
   --xdevice ${STENCIL_DSA_STRING}
-  --xp prop:kernel.Kernel.kernel_flags="${CMAKE_CXX_FLAGS} -DSTENCIL_SYNTHESIS -DHLSLIB_SYNTHESIS"
-  --kernel_frequency=${STENCIL_TARGET_CLOCK})
-if (NOT STENCIL_USE_SINGLE_DIMM)
-  set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS}
-      --xp misc:map_connect=add.kernel.Kernel_1.M_AXI_GMEM0.core.OCL_REGION_0.M00_AXI
-      --xp misc:map_connect=add.kernel.Kernel_1.M_AXI_GMEM1.core.OCL_REGION_0.M01_AXI
-      --max_memory_ports all)
-endif()
-if (STENCIL_KEEP_INTERMEDIATE)
-  set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS} -s)
-endif()
+  --xp prop:kernel.${STENCIL_ENTRY_FUNCTION}.kernel_flags="${CMAKE_CXX_FLAGS} -DHLSLIB_SYNTHESIS -DSTENCIL_SYNTHESIS"
+  --kernel_frequency ${STENCIL_TARGET_CLOCK})
+
+# if (STENCIL_DIMMS GREATER 3)
+#   set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS}
+#     --xp misc:map_connect=add.kernel.${STENCIL_ENTRY_FUNCTION}_1.M_AXI_GMEM2.core.OCL_REGION_0.M02_AXI
+#     --xp misc:map_connect=add.kernel.${STENCIL_ENTRY_FUNCTION}_1.M_AXI_GMEM3.core.OCL_REGION_0.M03_AXI)
+# endif()
+# if (STENCIL_DIMMS GREATER 1)
+#   set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS}
+#     --xp misc:map_connect=add.kernel.${STENCIL_ENTRY_FUNCTION}_1.M_AXI_GMEM0.core.OCL_REGION_0.M00_AXI
+#     --xp misc:map_connect=add.kernel.${STENCIL_ENTRY_FUNCTION}_1.M_AXI_GMEM1.core.OCL_REGION_0.M01_AXI
+#     --max_memory_ports all)
+# endif()
+
 add_custom_target(kernel
-  COMMAND ${SDACCEL_XOCC} -t hw ${STENCIL_XOCC_FLAGS}
-  -o sdaccel_hw.xclbin
+  COMMAND ${SDACCEL_XOCC} -t hw ${STENCIL_XOCC_FLAGS} -o
+  jacobi_${STENCIL_DATA_TYPE}_${STENCIL_KERNEL_WIDTH}_${STENCIL_KERNEL_DEPTH}_${STENCIL_DEPTH}_${STENCIL_ROWS}x${STENCIL_COLS}.xclbin
   DEPENDS ${STENCIL_HLS_DEPENDS})
