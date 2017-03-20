@@ -328,6 +328,39 @@ void UnrollCompute<1>(hlslib::Stream<Kernel_t> &previous,
 
 #endif
 
+void ComputeEmpty(hlslib::Stream<Kernel_t> &in, hlslib::Stream<Kernel_t> &out) {
+ComputeTime:
+  for (int t = 0; t < kTimeFolded; ++t) {
+  ComputeBlocks:
+    for (int b = 0; b < kBlocks; ++b) {
+    ComputeRows:
+      for (int r = 0; r < kRows; ++r) {
+      ComputeCols:
+        for (int c = 0; c < kBlockWidthKernel + 2 * kHaloKernel; ++c) {
+          #pragma HLS LOOP_FLATTEN
+          #pragma HLS PIPELINE
+          Kernel_t read;
+          if ((c >= kHaloKernel || b > 0) &&
+              (c < kBlockWidthKernel + kHaloKernel || b < kBlocks - 1)) {
+            read = hlslib::ReadBlocking(in);
+          } else {
+            read = Kernel_t(static_cast<Data_t>(0));
+          }
+          Kernel_t result;
+        SIMD:
+          for (int w = 0; w < kKernelWidth; ++w) {
+            #pragma HLS UNROLL
+            result[w] = read[w] + 1;
+          }
+          if (c >= kHaloKernel && c < kBlockWidthKernel + kHaloKernel) {
+            hlslib::WriteBlocking(out, result, kMemoryBufferDepth);
+          }
+        }
+      }
+    }
+  }
+}
+
 void Narrow(hlslib::Stream<Kernel_t> &in, hlslib::Stream<Memory_t> &out) {
   Memory_t memoryBlock;
 NarrowTime:
@@ -392,7 +425,12 @@ void Jacobi(Memory_t const *in, Memory_t *out) {
   hlslib::Stream<Memory_t> writeBuffer("writeBuffer");
   threads.emplace_back(Read, in, std::ref(readBuffer));
   threads.emplace_back(Widen, std::ref(readBuffer), std::ref(kernelPipeIn));
+#ifdef STENCIL_NO_KERNEL
+  threads.emplace_back(ComputeEmpty, std::ref(kernelPipeIn),
+                       std::ref(kernelPipeOut));
+#else
   UnrollCompute<kDepth>(kernelPipeIn, kernelPipeOut, threads);
+#endif
   threads.emplace_back(Narrow, std::ref(kernelPipeOut), std::ref(writeBuffer));
   threads.emplace_back(Write, std::ref(writeBuffer), out);
   for (auto &t : threads) {
@@ -409,7 +447,11 @@ void Jacobi(Memory_t const *in, Memory_t *out) {
   #pragma HLS STREAM variable=writeBuffer depth=kMemoryBufferDepth
   Read(in, readBuffer);
   Widen(readBuffer, kernelPipeIn);
+#ifdef STENCIL_NO_KERNEL
+  ComputeEmpty(kernelPipeIn, kernelPipeOut);
+#else
   UnrollCompute<kDepth>(kernelPipeIn, kernelPipeOut);
+#endif
   Narrow(kernelPipeOut, writeBuffer);
   Write(writeBuffer, out);
 #endif

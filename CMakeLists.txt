@@ -37,6 +37,8 @@ else()
 endif()
 set(STENCIL_KEEP_INTERMEDIATE OFF CACHE STRING
     "Keep intermediate SDAccel files")
+set(STENCIL_NO_KERNEL OFF CACHE STRING
+    "Remove stencil kernel to benchmark memory only.")
 set(STENCIL_ENTRY_FUNCTION "Jacobi")
 
 # Domain configuration
@@ -49,7 +51,7 @@ set(STENCIL_BLOCKS 4 CACHE STRING "Number of blocks.")
 set(STENCIL_ROWS 8192 CACHE STRING "Number of rows.")
 set(STENCIL_COLS 8192 CACHE STRING "Number of columns.")
 set(STENCIL_TARGET_CLOCK 200 CACHE STRING "Target clock speed.")
-set(STENCIL_HLS_TARGET_TIMING 5 CACHE STRING "Target timing of HLS.")
+set(STENCIL_TARGET_TIMING 5 CACHE STRING "Target timing of HLS.")
 
 # Dependencies
 find_package(SDAccel REQUIRED)
@@ -63,6 +65,9 @@ set(STENCIL_LIBS ${SDACCEL_LIBS})
 
 # Compilation flags
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+if (STENCIL_NO_KERNEL)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTENCIL_NO_KERNEL")
+endif()
 
 # Dependencies
 set(STENCIL_HLS_DEPENDS

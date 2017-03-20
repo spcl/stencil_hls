@@ -10,10 +10,13 @@ import subprocess as sp
 import sys
 import time
 
+dim = 8192
+blocks = 4
+timeFactor = 32
+
 def conf_string(conf):
   return (str(conf.dtype) + "_" + str(conf.targetClock) + "_" +
-          str(conf.units) + "_" + str(conf.width) + "_" +
-          str(conf.dim) + "_" + str(conf.blocks))
+          str(conf.units) + "_" + str(conf.width))
 
 def run_process(command, directory, pipe=True, logPath="log"):
   if pipe:
@@ -60,8 +63,7 @@ class Configuration(object):
     self.consumption = None
 
 def cmake_command(conf, options=""):
-  timesteps = 32 * conf.depth
-  dim = 8192
+  timesteps = timeFactor * conf.depth
   return ("cmake ../../ " + " ".join(options) +
           " -DSTENCIL_KEEP_INTERMEDIATE=ON" +
           " -DSTENCIL_TARGET_CLOCK={}".format(conf.targetClock) +
@@ -71,7 +73,8 @@ def cmake_command(conf, options=""):
           " -DSTENCIL_BLOCKS={}".format(conf.blocks) +
           " -DSTENCIL_TIME={}".format(timesteps) +
           " -DSTENCIL_DATA_TYPE={}".format(conf.dtype) +
-          " -DSTENCIL_DATA_WIDTH={}".format(conf.width) +
+          " -DSTENCIL_KERNEL_WIDTH={}".format(conf.width) +
+          " -DSTENCIL_MEMORY_WIDTH={}".format(16) +
           " -DSTENCIL_DEPTH={}".format(conf.depth))
 
 def create_builds(conf):
@@ -218,12 +221,12 @@ def check_build_status(buildFolder):
   return "failed_unknown"
 
 def get_conf(folderName):
-  m = re.search("build_([^_]+)_([0-9]+)_([0-9]+)_([0-9]+)_[0-9]+_([0-9]+)",
+  m = re.search("build_([^_]+)_([0-9]+)_([0-9]+)_([0-9]+)",
                 folderName)
   if not m:
     return None
   return Configuration(m.group(1), int(m.group(2)), int(m.group(3)),
-                       int(m.group(4)), int(m.group(5)), None)
+                       int(m.group(4)), blocks, None)
 
 def extract_to_file():
   confs = []
@@ -431,7 +434,6 @@ if __name__ == "__main__":
   dataWidths = [int(x) for x in sys.argv[4].split(",")]
   computeUnits = [int(x) for x in sys.argv[5].split(",")]
   options = sys.argv[6:]
-  blocks = 4
   configurations = [Configuration(*x, options=options) for x in itertools.product(
       types, targetClocks, computeUnits, dataWidths, [blocks])]
   scan_configurations(numProcs, configurations)
