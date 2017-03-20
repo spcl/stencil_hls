@@ -56,7 +56,7 @@ if (NOT SDACCEL_FOUND)
 else()
   include_directories(${SDACCEL_INCLUDE_DIR})
 endif()
-include_directories(${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR} ${SDACCEL_INCLUDE_DIRS} ${SDACCEL_ROOT_DIR}/Vivado_HLS/include)
+include_directories(${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/include ${SDACCEL_INCLUDE_DIRS} ${SDACCEL_ROOT_DIR}/Vivado_HLS/include)
 set(STENCIL_LIBS ${SDACCEL_LIBS})
 
 # Compilation flags
@@ -66,7 +66,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(STENCIL_HLS_DEPENDS
     include/Stencil.h.in
     src/Stencil.cpp
-    hlslib/OpenCL.h)
+    include/hlslib/SDAccel.h
+    include/hlslib/DataPack.h
+    include/hlslib/Utility.h
+    include/hlslib/Stream.h)
 
 # Configure files 
 set(STENCIL_KERNEL_STRING
