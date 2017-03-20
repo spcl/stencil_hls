@@ -6,43 +6,42 @@
 
 using Data_t = float;
 
-constexpr int kTimeTotal = ${STENCIL_TIME};
-constexpr int kDepth = ${STENCIL_DEPTH};
-constexpr int kTimeFolded = kTimeTotal / kDepth;
-constexpr int kMemoryWidth = ${STENCIL_MEMORY_WIDTH};
-constexpr int kKernelWidth = ${STENCIL_KERNEL_WIDTH};
-constexpr int kKernelPerMemory = kMemoryWidth / kKernelWidth;
-constexpr int kRows = ${STENCIL_ROWS};
-constexpr int kCols = ${STENCIL_COLS};
-constexpr int kBlocks = ${STENCIL_BLOCKS};
-constexpr int kHaloMemory = (kMemoryWidth + kDepth - 1) / kMemoryWidth;
-constexpr int kHaloKernel = (kKernelWidth + kDepth - 1) / kKernelWidth;
-constexpr int kBlockWidthMemory = (kCols / kBlocks) / kMemoryWidth;
-constexpr int kBlockWidthKernel = (kCols / kBlocks) / kKernelWidth;
-constexpr int kTotalElementsMemory = kRows * kCols / kMemoryWidth;
-constexpr int kTotalElementsKernel = kRows * kCols / kKernelWidth;
-constexpr int kTotalInputMemory =
+constexpr long kTimeTotal = ${STENCIL_TIME};
+constexpr long kDepth = ${STENCIL_DEPTH};
+constexpr long kTimeFolded = kTimeTotal / kDepth;
+constexpr long kMemoryWidth = ${STENCIL_MEMORY_WIDTH};
+constexpr long kKernelWidth = ${STENCIL_KERNEL_WIDTH};
+constexpr long kKernelPerMemory = kMemoryWidth / kKernelWidth;
+constexpr long kRows = ${STENCIL_ROWS};
+constexpr long kCols = ${STENCIL_COLS};
+constexpr long kBlocks = ${STENCIL_BLOCKS};
+constexpr long kHaloMemory = (kMemoryWidth + kDepth - 1) / kMemoryWidth;
+constexpr long kHaloKernel = (kKernelWidth + kDepth - 1) / kKernelWidth;
+constexpr long kBlockWidthMemory = (kCols / kBlocks) / kMemoryWidth;
+constexpr long kBlockWidthKernel = (kCols / kBlocks) / kKernelWidth;
+constexpr long kTotalElementsMemory = kRows * kCols / kMemoryWidth;
+constexpr long kTotalElementsKernel = kRows * kCols / kKernelWidth;
+constexpr long kTotalInputMemory =
     kRows * (2 * (kBlockWidthMemory + kHaloMemory) +
              (kBlocks - 2) * (kBlockWidthMemory + 2 * kHaloMemory));
-constexpr int kTotalInputKernel =
+constexpr long kTotalInputKernel =
     kRows * (2 * (kBlockWidthKernel + kHaloKernel) +
              (kBlocks - 2) * (kBlockWidthKernel + 2 * kHaloKernel));
-constexpr int kDimms = ${STENCIL_DIMMS};
+constexpr long kDimms = ${STENCIL_DIMMS};
 using Kernel_t = hlslib::DataPack<Data_t, kKernelWidth>;
 using Memory_t = hlslib::DataPack<Kernel_t, kKernelPerMemory>;
-constexpr int kPipeDepth = 4;
-constexpr int kMemoryBufferDepth = 512;
+constexpr long kPipeDepth = 4;
+constexpr long kMemoryBufferDepth = 512;
 char const *const kDeviceDsaString = "${STENCIL_DSA_STRING}";
 char const *const kKernelString = "${STENCIL_KERNEL_STRING}";
+constexpr Data_t kBoundary = 1;
 
 // Make up for misalignment between memory and kernel data width
 // boundaries
-constexpr int kAlignmentGap =
-    kHaloMemory * kKernelPerMemory - kHaloKernel;
-constexpr int kKernelBegin = kAlignmentGap;
-constexpr int kKernelEnd =
-    (kBlockWidthMemory + 2 * kHaloMemory) * kKernelPerMemory -
-    kAlignmentGap;
+constexpr long kAlignmentGap = kHaloMemory * kKernelPerMemory - kHaloKernel;
+constexpr long kKernelBegin = kAlignmentGap;
+constexpr long kKernelEnd =
+    (kBlockWidthMemory + 2 * kHaloMemory) * kKernelPerMemory - kAlignmentGap;
 
 static_assert(kCols % kBlocks == 0, "Columns must be divisable by blocks");
 static_assert((kCols / kBlocks) % kMemoryWidth == 0,
