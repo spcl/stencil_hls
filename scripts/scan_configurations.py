@@ -13,7 +13,7 @@ import time
 def conf_string(conf):
   return (str(conf.dtype) + "_" + str(conf.targetClock) + "_" +
           str(conf.units) + "_" + str(conf.width) + "_" +
-          str(conf.dim) + "_" + str(conf.tileSize))
+          str(conf.dim) + "_" + str(conf.blocks))
 
 def run_process(command, directory, pipe=True, logPath="log"):
   if pipe:
@@ -41,18 +41,18 @@ class Consumption(object):
     self.power = power
     self.clock = clock
   def csv_cols():
-    return "status,dtype,targetClock,units,width,depth,tileSize,clock,dsp,lut,ff,bram,power"
+    return "status,dtype,targetClock,units,width,depth,blocks,clock,dsp,lut,ff,bram,power"
   def __repr__(self):
     return ",".join(map(str, [
         self.status, self.conf.dtype, self.conf.targetClock, self.conf.units,
-        self.conf.width, self.conf.depth, self.conf.tileSize, self.clock,
+        self.conf.width, self.conf.depth, self.conf.blocks, self.clock,
         self.dsp, self.lut, self.ff, self.bram, self.power]))
 
 class Configuration(object):
-  def __init__(self, dtype, targetClock, units, width, tileSize, options):
+  def __init__(self, dtype, targetClock, units, width, blocks, options):
     self.dtype = dtype
     self.targetClock = targetClock
-    self.tileSize = tileSize
+    self.blocks = blocks
     self.width = width
     self.units = units
     self.depth = int(self.units / self.width)
@@ -60,16 +60,15 @@ class Configuration(object):
     self.consumption = None
 
 def cmake_command(conf, options=""):
-  timesteps = 128 * conf.depth
-  dim = 16384
-  blocks = dim / (conf.tileSize * conf.width)
+  timesteps = 32 * conf.depth
+  dim = 8192
   return ("cmake ../../ " + " ".join(options) +
           " -DSTENCIL_KEEP_INTERMEDIATE=ON" +
           " -DSTENCIL_TARGET_CLOCK={}".format(conf.targetClock) +
           " -DSTENCIL_TARGET_TIMING={}".format(1000/conf.targetClock) +
           " -DSTENCIL_ROWS={}".format(dim) +
           " -DSTENCIL_COLS={}".format(dim) +
-          " -DSTENCIL_BLOCKS={}".format(blocks) +
+          " -DSTENCIL_BLOCKS={}".format(conf.blocks) +
           " -DSTENCIL_TIME={}".format(timesteps) +
           " -DSTENCIL_DATA_TYPE={}".format(conf.dtype) +
           " -DSTENCIL_DATA_WIDTH={}".format(conf.width) +
@@ -394,7 +393,6 @@ def print_usage():
         "<number of processes> " +
         "<data type...> " +
         "<target clock...> " +
-        "<tile size...> " +
         "<data width...> " +
         "<compute units...> " +
         "<additional CMake options...>" +
@@ -423,17 +421,17 @@ if __name__ == "__main__":
     benchmark(int(sys.argv[2]))
     sys.exit(0)
 
-  if len(sys.argv) < 7:
+  if len(sys.argv) < 6:
     print_usage()
     sys.exit(1)
 
   numProcs = int(sys.argv[1])
   types = sys.argv[2].split(",")
   targetClocks = [int(x) for x in sys.argv[3].split(",")]
-  tileSizes = [int(x) for x in sys.argv[4].split(",")]
-  dataWidths = [int(x) for x in sys.argv[5].split(",")]
-  computeUnits = [int(x) for x in sys.argv[6].split(",")]
-  options = sys.argv[7:]
-  configurations = [Configuration(*x, options=options) for x in itertools.product(
-      types, targetClocks, computeUnits, dataWidths, tileSizes)]
+  dataWidths = [int(x) for x in sys.argv[4].split(",")]
+  computeUnits = [int(x) for x in sys.argv[5].split(",")]
+  options = sys.argv[6:]
+  blocks = 4
+  configurations = [Configuration(*x, blocks, options=options) for x in itertools.product(
+      types, targetClocks, computeUnits, dataWidths)]
   scan_configurations(numProcs, configurations)
