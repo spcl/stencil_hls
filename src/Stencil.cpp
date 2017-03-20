@@ -11,7 +11,7 @@
 
 void Read(Memory_t const *input, hlslib::Stream<Memory_t> &buffer) {
 ReadTime:
-  for (int t = 0; t < kTime; ++t) {
+  for (int t = 0; t < kTimeFolded; ++t) {
   ReadBlocks:
     for (int b = 0; b < kBlocks; ++b) {
     ReadRows:
@@ -47,7 +47,7 @@ void Widen(hlslib::Stream<Memory_t> &in, hlslib::Stream<Kernel_t> &out) {
   int r = 0;
   int c = 0;
 WidenTime:
-  for (int t = 0; t < kTime; ++t) {
+  for (int t = 0; t < kTimeFolded; ++t) {
   WidenSpace:
     for (int i = 0; i < kTotalInputKernel; ++i) {
       #pragma HLS LOOP_FLATTEN
@@ -92,7 +92,7 @@ WidenTime:
 
 void Compute(hlslib::Stream<Kernel_t> &in, hlslib::Stream<Kernel_t> &out) {
 ComputeTime:
-  for (int t = 0; t < kTime; ++t) {
+  for (int t = 0; t < kTimeFolded; ++t) {
   ComputeBlocks:
     for (int b = 0; b < kBlocks; ++b) {
     ComputeRows:
@@ -126,7 +126,7 @@ ComputeTime:
 void Narrow(hlslib::Stream<Kernel_t> &in, hlslib::Stream<Memory_t> &out) {
   Memory_t memoryBlock;
 NarrowTime:
-  for (int t = 0; t < kTime; ++t) {
+  for (int t = 0; t < kTimeFolded; ++t) {
   NarrowBlocks:
     for (int b = 0; b < kBlocks; ++b) {
     NarrowRows:
@@ -149,7 +149,7 @@ NarrowTime:
 
 void Write(hlslib::Stream<Memory_t> &buffer, Memory_t *output) {
 WriteTime:
-  for (int t = 0; t < kTime; ++t) {
+  for (int t = 0; t < kTimeFolded; ++t) {
   WriteBlocks:
     for (int b = 0; b < kBlocks; ++b) {
     WriteRows:

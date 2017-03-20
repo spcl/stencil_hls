@@ -69,6 +69,8 @@ set(STENCIL_HLS_DEPENDS
     hlslib/OpenCL.h)
 
 # Configure files 
+set(STENCIL_KERNEL_STRING
+    "jacobi_${STENCIL_DATA_TYPE}_${STENCIL_KERNEL_WIDTH}_${STENCIL_KERNEL_DEPTH}_${STENCIL_DEPTH}_${STENCIL_ROWS}x${STENCIL_COLS}.xclbin")
 configure_file(include/Stencil.h.in Stencil.h)
 configure_file(scripts/Synthesis.tcl.in Synthesis.tcl)
 
@@ -118,5 +120,5 @@ set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS}
 
 add_custom_target(kernel
   COMMAND ${SDACCEL_XOCC} -t hw ${STENCIL_XOCC_FLAGS} -o
-  jacobi_${STENCIL_DATA_TYPE}_${STENCIL_KERNEL_WIDTH}_${STENCIL_KERNEL_DEPTH}_${STENCIL_DEPTH}_${STENCIL_ROWS}x${STENCIL_COLS}.xclbin
+  ${STENCIL_KERNEL_STRING} 
   DEPENDS ${STENCIL_HLS_DEPENDS})

@@ -1,4 +1,4 @@
-#include "hlslib/OpenCL.h"
+#include "hlslib/SDAccel.h"
 #include "Stencil.h"
 #include <string>
 #include <iomanip>
@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
 
   try {
 
-    hlslib::ocl::Context context("Xilinx");
+    hlslib::ocl::Context context("Xilinx", kDeviceDsaString);
 
     auto device = context.MakeBuffer<Memory_t, hlslib::ocl::Access::readWrite>(
         hlslib::ocl::MemoryBank::bank0, 2 * kTotalElementsMemory);
@@ -43,16 +43,12 @@ int main(int argc, char **argv) {
       device.CopyToDevice(host.cbegin());
     }
 
-    auto kernel = context.MakeKernelFromBinary(
-        "memory_benchmark.xclbin", "MemoryBenchmark", device, device);
+    auto kernel =
+        context.MakeKernelFromBinary(kKernelString, "Jacobi", device, device);
 
     const auto readSize =
-        static_cast<float>(kTime) * kRows *
-        ((2 * (kBlockWidthMemory + kHaloMemory)) +
-         (kBlocks - 2) * (kBlockWidthMemory + 2 * kHaloMemory)) *
-        sizeof(Memory_t);
-    const auto writeSize = static_cast<float>(kTime) * kRows * kBlocks *
-                           kBlockWidthMemory * sizeof(Memory_t);
+        static_cast<float>(kTimeFolded) * kTotalInputMemory * sizeof(Memory_t);
+    const auto writeSize = static_cast<float>(kTimeFolded) * sizeof(Memory_t);
     const auto transferred = readSize + writeSize;
 
     std::cout << "Executing kernel..." << std::flush;
@@ -85,9 +81,9 @@ int main(int argc, char **argv) {
           for (int m = 0; m < kBlockWidthMemory; ++m) {
             const int index = offset + r * kBlockWidthMemory * kBlocks +
                               b * kBlockWidthMemory + m;
-            const Data_t expected = r * kBlockWidthMemory * kBlocks +
-                                    b * kBlockWidthMemory + m +
-                                    ((offset == 0) ? kTime : (kTime - 1));
+            const Data_t expected =
+                r * kBlockWidthMemory * kBlocks + b * kBlockWidthMemory + m +
+                ((offset == 0) ? kTimeFolded : (kTimeFolded - 1));
             for (int k = 0; k < kKernelPerMemory; ++k) {
               const Kernel_t elem = host[index][k];
               for (int w = 0; w < kMemoryWidth; ++w) {

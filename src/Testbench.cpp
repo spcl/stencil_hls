@@ -15,8 +15,9 @@ int main() {
     for (int r = 0; r < kRows; ++r) {
       for (int c = 0; c < kBlockWidthMemory * kBlocks; ++c) {
         const int index = offset + r * kBlockWidthMemory * kBlocks + c;
-        const Data_t expected = r * kBlockWidthMemory * kBlocks + c +
-                                ((offset == 0) ? kTime : (kTime - 1));
+        const Data_t expected =
+            r * kBlockWidthMemory * kBlocks + c +
+            ((offset == 0) ? kTimeFolded : (kTimeFolded - 1));
         for (int k = 0; k < kKernelPerMemory; ++k) {
           const Kernel_t elem = memory[index][k];
           for (int w = 0; w < kKernelWidth; ++w) {
