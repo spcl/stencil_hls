@@ -432,6 +432,6 @@ if __name__ == "__main__":
   computeUnits = [int(x) for x in sys.argv[5].split(",")]
   options = sys.argv[6:]
   blocks = 4
-  configurations = [Configuration(*x, blocks, options=options) for x in itertools.product(
-      types, targetClocks, computeUnits, dataWidths)]
+  configurations = [Configuration(*x, options=options) for x in itertools.product(
+      types, targetClocks, computeUnits, dataWidths, [blocks])]
   scan_configurations(numProcs, configurations)
