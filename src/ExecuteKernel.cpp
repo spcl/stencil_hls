@@ -38,9 +38,6 @@ int main(int argc, char **argv) {
     if (verify) {
       host = std::vector<Memory_t>(2 * kTotalElementsMemory,
                                    Memory_t(Kernel_t(static_cast<Data_t>(0))));
-      for (int i = 0; i < kTotalElementsMemory; ++i) {
-        host[i] = Memory_t(Kernel_t(static_cast<Data_t>(i)));
-      }
       device.CopyToDevice(host.cbegin());
     }
 
@@ -112,7 +109,6 @@ int main(int argc, char **argv) {
     }
     // std::cout << "Correct: " << correct << "\nMismatches: " << mismatches
     //           << std::endl;
-    return 0;
   }
 
   return 0;

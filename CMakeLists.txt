@@ -49,7 +49,7 @@ set(STENCIL_BLOCKS 4 CACHE STRING "Number of blocks.")
 set(STENCIL_ROWS 8192 CACHE STRING "Number of rows.")
 set(STENCIL_COLS 8192 CACHE STRING "Number of columns.")
 set(STENCIL_TARGET_CLOCK 200 CACHE STRING "Target clock speed.")
-set(STENCIL_HLS_TARGET_TIMING 5 CACHE STRING "Target timing of HLS.")
+set(STENCIL_TARGET_TIMING 5 CACHE STRING "Target timing of HLS.")
 
 # Dependencies
 find_package(SDAccel REQUIRED)
