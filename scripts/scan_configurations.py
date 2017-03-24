@@ -10,10 +10,16 @@ import subprocess as sp
 import sys
 import time
 
+# Fixed parameters
+dim = 8192
+blocks = 4
+timesteps = 512
+memoryWidth = 16
+
 def conf_string(conf):
-  return (str(conf.dtype) + "_" + str(conf.targetClock) + "_" +
-          str(conf.units) + "_" + str(conf.width) + "_" +
-          str(conf.dim) + "_" + str(conf.blocks))
+  return (conf.target + "_" + conf.dtype + "_" + str(conf.targetClock) + "_" +
+          str(conf.width) + "_" + str(conf.compute) + "_" +
+          str(conf.dim) + "_" + str(conf.blocks) + "_" + str(conf.time))
 
 def run_process(command, directory, pipe=True, logPath="log"):
   if pipe:
@@ -41,38 +47,45 @@ class Consumption(object):
     self.power = power
     self.clock = clock
   def csv_cols():
-    return "status,dtype,targetClock,units,width,depth,blocks,clock,dsp,lut,ff,bram,power"
+    return ("status," + Configuration.csv_cols() +
+            ",clock,dsp,lut,ff,bram,power")
   def __repr__(self):
     return ",".join(map(str, [
-        self.status, self.conf.dtype, self.conf.targetClock, self.conf.units,
-        self.conf.width, self.conf.depth, self.conf.blocks, self.clock,
+        self.status, str(conf), self.clock,
         self.dsp, self.lut, self.ff, self.bram, self.power]))
 
 class Configuration(object):
-  def __init__(self, dtype, targetClock, units, width, blocks, options):
+  def __init__(self, target, dtype, targetClock, width, compute, dim, blocks,
+               time, options=None):
+    self.target = target
     self.dtype = dtype
     self.targetClock = targetClock
-    self.blocks = blocks
     self.width = width
-    self.units = units
-    self.depth = int(self.units / self.width)
+    self.compute = units
+    self.dim = dim
+    self.blocks = blocks
     self.options = options
     self.consumption = None
 
 def cmake_command(conf, options=""):
-  timesteps = 32 * conf.depth
-  dim = 8192
+  if conf.compute % conf.width != 0:
+    raise RuntimeError(
+        "Invalid configuration: compute {} not divisable by width {}.".format(
+            conf.compute, conf.width))
+  depth = conf.compute / conf.width
   return ("cmake ../../ " + " ".join(options) +
           " -DSTENCIL_KEEP_INTERMEDIATE=ON" +
+          " -DSTENCIL_TARGET={}".format(conf.target) +
+          " -DSTENCIL_DATA_TYPE={}".format(conf.dtype) +
           " -DSTENCIL_TARGET_CLOCK={}".format(conf.targetClock) +
           " -DSTENCIL_TARGET_TIMING={}".format(1000/conf.targetClock) +
-          " -DSTENCIL_ROWS={}".format(dim) +
-          " -DSTENCIL_COLS={}".format(dim) +
+          " -DSTENCIL_KERNEL_WIDTH={}".format(conf.width) +
+          " -DSTENCIL_MEMORY_WIDTH={}".format(16) +
+          " -DSTENCIL_DEPTH={}".format(depth) +
+          " -DSTENCIL_ROWS={}".format(conf.dim) +
+          " -DSTENCIL_COLS={}".format(conf.dim) +
           " -DSTENCIL_BLOCKS={}".format(conf.blocks) +
-          " -DSTENCIL_TIME={}".format(timesteps) +
-          " -DSTENCIL_DATA_TYPE={}".format(conf.dtype) +
-          " -DSTENCIL_DATA_WIDTH={}".format(conf.width) +
-          " -DSTENCIL_DEPTH={}".format(conf.depth))
+          " -DSTENCIL_TIME={}".format(conf.time))
 
 def create_builds(conf):
   cmakeCommand = cmake_command(conf, options=conf.options)
@@ -87,43 +100,50 @@ def create_builds(conf):
     confFile.write("#!/bin/sh\n{}".format(cmakeCommand))
   run_build(conf, clean=True, hardware=True)
 
+def time_only(datetime):
+  return datetime.strftime("%H:%M:%S")
+
+def print_status(conf, status):
+  print("[{}] {}: {}".format(time_only(datetime.datetime.now()),
+                             str(conf_string(conf)), status))
+
 def run_build(conf, clean=True, hardware=True):
   confStr = conf_string(conf)
   confDir = os.path.join("scan", "build_" + confStr)
   if run_process("sh Configure.sh".split(), confDir) != 0:
     raise Exception(confStr + ": Configuration failed.")
   if clean:
-    print(confStr + ": cleaning folder...")
+    print_status(conf, "cleaning folder...")
     if run_process("make clean".split(), confDir) != 0:
       raise Exception(confStr + ": Clean failed.")
-  print(confStr + ": building software...")
+  print_status(conf, "building software...")
   if run_process("make".split(), confDir) != 0:
     raise Exception(confStr + ": Software build failed.")
   if hardware:
     begin = time.time()
-    print(confStr + ": running HLS...")
+    print_status(conf, "running HLS...")
     if run_process("make synthesis".split(), confDir) != 0:
       raise Exception(confStr + ": HLS failed.")
-    print(confStr + ": finished HLS after {}.".format(
-        str(datetime.timedelta(seconds=time.time() - begin))))
+    print_status(conf, "finished HLS after {}.".format(
+        time_only(datetime.timedelta(seconds=time.time() - begin))))
     begin = time.time()
-    print(confStr + ": starting kernel build...")
+    print_status(conf, "starting kernel build...")
     if run_process("make kernel".split(), confDir) != 0:
       try:
         with open(os.path.join(confDir, "log.out")) as logFile:
           m = re.search("auto frequency scaling failed", logFile.read())
           if not m:
-            print(confStr + ": failed after {}.".format(
-                str(datetime.timedelta(seconds=time.time() - begin))))
+            print_status(conf, "FAILED after {}.".format(
+                time_only(datetime.timedelta(seconds=time.time() - begin))))
           else:
-            print(confStr + ": failed timing after {}.".format(
-                str(datetime.timedelta(seconds=time.time() - begin))))
+            print(conf, "TIMING failed after {}.".format(
+                time_only(datetime.timedelta(seconds=time.time() - begin))))
       except FileNotFoundError:
-        print(confStr + ": failed after {}.".format(
-            str(datetime.timedelta(seconds=time.time() - begin))))
+        print_status(conf, "FAILED after {}.".format(
+            time_only(datetime.timedelta(seconds=time.time() - begin))))
     else:
-      print(confStr + ": finished in {}.".format(
-          str(datetime.timedelta(seconds=time.time() - begin))))
+      print_status(conf, " SUCCESS in {}.".format(
+          time_only(datetime.timedelta(seconds=time.time() - begin))))
   with open(os.path.join(confDir, "log.out"), "r") as logFile:
     m = re.search(
         "The frequency is being automatically changed to ([0-9]+) MHz",
@@ -136,8 +156,15 @@ def run_build(conf, clean=True, hardware=True):
 
 def extract_result_build(conf):
   buildFolder = os.path.join("scan", "build_" + conf_string(conf))
+  xoccFolder = None
+  for fileName in os.listdir(buildFolder):
+    if fileName.startswith("_xocc"):
+      xoccFolder = fileName
+      break
+  if not xoccFolder:
+    raise RuntimeError("Build folder not found for {}.".format(str(conf)))
   kernelFolder = os.path.join(
-      buildFolder, "_xocc_Stencil_sdaccel_hw.dir",
+      buildFolder, xoccFolder,
       "impl", "build", "system", "sdaccel_hw", "bitstream")
   implFolder = os.path.join(
       kernelFolder,
@@ -218,12 +245,14 @@ def check_build_status(buildFolder):
   return "failed_unknown"
 
 def get_conf(folderName):
-  m = re.search("build_([^_]+)_([0-9]+)_([0-9]+)_([0-9]+)_[0-9]+_([0-9]+)",
+  m = re.search("([^_]+)_([^_]+)_([1-9][0-9]*)_([1-9][0-9]*)_([1-9][0-9]*)_" +
+                "([1-9][0-9]*)_([1-9][0-9]*)_([1-9][0-9]*)",
                 folderName)
   if not m:
     return None
   return Configuration(m.group(1), int(m.group(2)), int(m.group(3)),
-                       int(m.group(4)), int(m.group(5)), None)
+                       int(m.group(4)), int(m.group(5)), int(m.group(6)),
+                       int(m.group(7)), int(m.group(8)))
 
 def extract_to_file():
   confs = []
@@ -251,6 +280,27 @@ def scan_configurations(numProcs, configurations):
     pool.terminate()
   print("All configurations finished running.")
 
+def xocc_folder(conf):
+  return "_xocc_Stencil_jacobi_{}_{}_c{}_w{}_d{}_{}x{}_b{}_t{}.dir".format(
+      conf.target, conf.dtype, int(conf.targetClock), conf.width,
+      conf.compute / conf.width, conf.dim, conf.dim, conf.blocks, conf.time)
+
+def files_to_copy(conf):
+  filesToCopy = ["Configure.sh", "frequency.txt"]
+  xoccFolder = xocc_folder(conf)
+  kernelFolder = os.path.join(
+      xoccFolder, "impl", "build",
+      "system", "sdaccel_hw", "bitstream", "sdaccel_hw_ipi")
+  filesToCopy.append(os.path.join(kernelFolder, "vivado.log"))
+  filesToCopy.append(os.path.join(kernelFolder, "vivado_warning.txt"))
+  implFolder = os.path.join(
+      kernelFolder, "ipiimpl", "ipiimpl.runs", "impl_1")
+  filesToCopy.append(os.path.join(
+      sourceDir, implFolder, "xcl_design_wrapper_utilization_placed.rpt"))
+  filesToCopy.append(os.path.join(
+      sourceDir, implFolder, "xcl_design_wrapper_power_routed.rpt"))
+  return implFolder, filesToCopy
+
 def package_configurations():
   packagedSomething = False
   for fileName in os.listdir("scan"):
@@ -269,44 +319,15 @@ def package_configurations():
     if kernelPath == None or not os.path.exists(kernelPath):
       continue
     print("Packaging {}...".format(fileName))
-    try:
-      os.makedirs(packageFolder)
-    except FileExistsError:
-      pass
-
-    shutil.copy(os.path.join(sourceDir, "Configure.sh"), packageFolder)
-    shutil.copy(os.path.join(sourceDir, "frequency.txt"), packageFolder)
-    shutil.copy(kernelPath, packageFolder)
-
-    kernelFolder = os.path.join(
-        "_xocc_Stencil_sdaccel_hw.dir", "impl", "build",
-        "system", "sdaccel_hw", "bitstream", "sdaccel_hw_ipi")
-    try:
-      os.makedirs(os.path.join(packageFolder, kernelFolder))
-    except FileExistsError:
-      pass
-    shutil.copy(os.path.join(sourceDir, kernelFolder, "vivado.log"),
-                os.path.join(packageFolder, kernelFolder))
-    try:
-      shutil.copy(os.path.join(sourceDir, kernelFolder, "vivado_warning.txt"),
-                  os.path.join(packageFolder, kernelFolder))
-    except FileNotFoundError:
-      pass
-
-    implFolder = os.path.join(
-        kernelFolder, "ipiimpl", "ipiimpl.runs", "impl_1")
+    implFolder, filesToCopy = files_to_copy(conf)
     try:
       os.makedirs(os.path.join(packageFolder, implFolder))
     except FileExistsError:
       pass
-    shutil.copy(os.path.join(sourceDir, implFolder,
-                             "xcl_design_wrapper_utilization_placed.rpt"),
-                os.path.join(packageFolder, implFolder))
-    shutil.copy(os.path.join(sourceDir, implFolder,
-                             "xcl_design_wrapper_power_routed.rpt"),
-                os.path.join(packageFolder, implFolder))
-
-
+    shutil.copy(kernelPath, packageFolder)
+    for path in filesToCopy:
+      shutil.copy(os.path.join(sourceDir, path),
+                  os.path.join(packageFolder, path))
     packagedSomething = True
   if packagedSomething:
     print("Kernels and configuration files packaged into \"scan_packaged\".")
@@ -317,21 +338,21 @@ def unpackage_configuration(conf):
   confStr = conf_string(conf)
   fileName = "build_" + confStr
   print("Unpackaging {}...".format(confStr))
-  unpackageFolder = os.path.join("scan", fileName)
+  sourceDir = os.path.join("scan_packaged", fileName)
+  targetDir = os.path.join("scan", fileName)
+  implFolder, filesToCopy = files_to_copy(conf)
   try:
-    os.makedirs(unpackageFolder)
+    os.makedirs(os.path.join(targetDir, implFolder))
   except FileExistsError:
     pass
-  with open(os.path.join("scan_packaged",
-                         fileName, "Configure.sh"), "r") as inFile:
-    with open(os.path.join(unpackageFolder, "Configure.sh"), "w") as outFile:
-      inText = inFile.read()
-      fixed = re.sub(" -DCMAKE_C(XX)?_COMPILER=[^ ]*", "", inText)
-      outFile.write(fixed)
-  shutil.copy(os.path.join("scan_packaged", fileName, "frequency.txt"),
-              unpackageFolder)
-  shutil.copy(os.path.join("scan_packaged", fileName, "sdaccel_hw.xclbin"),
-              unpackageFolder)
+  for path in filesToCopy:
+    shutil.copy(os.path.join(sourceDir, path), os.path.join(targetDir, path))
+  with open(os.path.join(targetDir, "Configure.sh"), "r") as inFile:
+    confStr = inFile.read()
+  with open(os.path.join(targetDir, "Configure.sh"), "w") as outFile:
+    # Remove specific compiler paths
+    fixed = re.sub(" -DCMAKE_C(XX)?_COMPILER=[^ ]*", "", confStr)
+    outFile.write(fixed)
   run_build(conf, clean=False, hardware=False)
 
 def unpackage_configurations():
@@ -431,7 +452,6 @@ if __name__ == "__main__":
   dataWidths = [int(x) for x in sys.argv[4].split(",")]
   computeUnits = [int(x) for x in sys.argv[5].split(",")]
   options = sys.argv[6:]
-  blocks = 4
-  configurations = [Configuration(*x, blocks, options=options) for x in itertools.product(
-      types, targetClocks, computeUnits, dataWidths)]
+  configurations = [Configuration(*x, options=options) for x in itertools.product(
+      types, targetClocks, computeUnits, dataWidths, [blocks])]
   scan_configurations(numProcs, configurations)

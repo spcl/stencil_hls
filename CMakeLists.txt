@@ -37,6 +37,8 @@ else()
 endif()
 set(STENCIL_KEEP_INTERMEDIATE OFF CACHE STRING
     "Keep intermediate SDAccel files")
+set(STENCIL_NO_KERNEL OFF CACHE STRING
+    "Remove stencil kernel to benchmark memory only.")
 set(STENCIL_ENTRY_FUNCTION "Jacobi")
 
 # Domain configuration
@@ -63,6 +65,9 @@ set(STENCIL_LIBS ${SDACCEL_LIBS})
 
 # Compilation flags
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+if (STENCIL_NO_KERNEL)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTENCIL_NO_KERNEL")
+endif()
 
 # Dependencies
 set(STENCIL_HLS_DEPENDS
@@ -77,7 +82,7 @@ set(STENCIL_HLS_DEPENDS
 
 # Configure files 
 set(STENCIL_KERNEL_STRING
-  "jacobi_${STENCIL_DATA_TYPE}_c${STENCIL_TARGET_CLOCK}_w${STENCIL_KERNEL_WIDTH}_d${STENCIL_DEPTH}_${STENCIL_ROWS}x${STENCIL_COLS}_b${STENCIL_BLOCKS}_t${STENCIL_TIME}.xclbin")
+  "jacobi_${STENCIL_TARGET}_${STENCIL_DATA_TYPE}_c${STENCIL_TARGET_CLOCK}_w${STENCIL_KERNEL_WIDTH}_d${STENCIL_DEPTH}_${STENCIL_ROWS}x${STENCIL_COLS}_b${STENCIL_BLOCKS}_t${STENCIL_TIME}.xclbin")
 configure_file(include/Stencil.h.in Stencil.h)
 configure_file(scripts/Synthesis.tcl.in Synthesis.tcl)
 
