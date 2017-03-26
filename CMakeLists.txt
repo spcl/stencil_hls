@@ -102,6 +102,10 @@ else()
   message(WARNING "Threads not found. Testbench will be unavailable.")
 endif()
 
+# Stats
+add_executable(Stats src/Stats.cpp)
+target_link_libraries(Stats ${STENCIL_LIBS})
+
 # SDAccel
 add_executable(ExecuteKernel.exe src/ExecuteKernel.cpp src/Reference.cpp)
 target_link_libraries(ExecuteKernel.exe ${STENCIL_LIBS})
