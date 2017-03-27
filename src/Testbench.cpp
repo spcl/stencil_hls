@@ -1,5 +1,6 @@
 #include "Stencil.h"
 #include "Reference.h"
+#include <cmath>
 #include <iostream>
 #include <vector>
 
