@@ -298,7 +298,8 @@ def kernel_string(conf):
       conf.timeFactor * conf.compute)
 
 def files_to_copy(conf):
-  filesToCopy = ["Configure.sh", "frequency.txt"]
+  filesToCopy = ["Configure.sh", "frequency.txt",
+                 kernel_string(conf) + ".xclbin"]
   kernelString = kernel_string(conf)
   xoccFolder = "_xocc_Stencil_" + kernel_string(conf) + ".dir"
   kernelFolder = os.path.join(
@@ -339,7 +340,6 @@ def package_configurations(target):
       os.makedirs(os.path.join(packageFolder, implFolder))
     except FileExistsError:
       pass
-    shutil.copy(kernelPath, packageFolder)
     for path in filesToCopy:
       shutil.copy(os.path.join(sourceDir, path),
                   os.path.join(packageFolder, path))
