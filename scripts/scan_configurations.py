@@ -341,8 +341,15 @@ def package_configurations(target):
     except FileExistsError:
       pass
     for path in filesToCopy:
-      shutil.copy(os.path.join(sourceDir, path),
-                  os.path.join(packageFolder, path))
+      try:
+        shutil.copy(os.path.join(sourceDir, path),
+                    os.path.join(packageFolder, path))
+      except FileNotFoundError as err:
+        if path.endswith("vivado_warning.txt"):
+          with open(os.path.join(packageFolder, path), "w") as outFile:
+            pass
+        else:
+          raise err
     packagedSomething = True
   if packagedSomething:
     print(("Successfully packaged kernels and configuration " +
