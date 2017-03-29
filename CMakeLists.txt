@@ -83,13 +83,8 @@ mark_as_advanced(STENCIL_ENTRY_FUNCTION)
 
 # Dependencies
 find_package(SDAccel REQUIRED)
-if (NOT SDACCEL_FOUND)
-  message(FATAL_ERROR "SDAccel not found.")
-else()
-  include_directories(${SDACCEL_INCLUDE_DIR})
-endif()
-include_directories(${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/include ${SDACCEL_INCLUDE_DIRS} ${SDACCEL_ROOT_DIR}/Vivado_HLS/include)
-set(STENCIL_LIBS ${SDACCEL_LIBS})
+include_directories(${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/include ${SDAccel_INCLUDE_DIRS})
+set(STENCIL_LIBS ${SDAccel_LIBRARIES})
 
 # Compilation flags
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -120,7 +115,7 @@ configure_file(scripts/Synthesis.tcl.in Synthesis.tcl)
 
 # Synthesis
 add_custom_target(synthesis
-  COMMAND ${SDACCEL_VIVADO_HLS} -f Synthesis.tcl
+  COMMAND ${SDAccel_VIVADO_HLS} -f Synthesis.tcl
   DEPENDS ${STENCIL_HLS_DEPENDS})
 
 # Library files
@@ -170,6 +165,6 @@ endif()
 
 # Kernel build
 add_custom_target(kernel
-  COMMAND ${SDACCEL_XOCC} -t hw ${STENCIL_XOCC_FLAGS} -o
+  COMMAND ${SDAccel_XOCC} -t hw ${STENCIL_XOCC_FLAGS} -o
   ${STENCIL_KERNEL_STRING} 
   DEPENDS ${STENCIL_HLS_DEPENDS})
