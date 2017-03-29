@@ -58,4 +58,7 @@ extern "C" {
 
 void Jacobi(Memory_t const *in, Memory_t *out);
 
+void JacobiTwoDimms(Memory_t const *in0, Memory_t *out0,
+                    Memory_t const *in1, Memory_t *out1);
+
 }
