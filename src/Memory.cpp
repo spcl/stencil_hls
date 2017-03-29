@@ -1,4 +1,5 @@
 #include "Memory.h"
+#include <cassert>
 
 void Read(Memory_t const *input, hlslib::Stream<Memory_t> &buffer) {
 ReadTime:
