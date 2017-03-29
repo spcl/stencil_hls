@@ -4,5 +4,6 @@ set_part ${STENCIL_PART_NAME}
 add_files -cflags "-DSTENCIL_SYNTHESIS -DHLSLIB_SYNTHESIS ${CMAKE_CXX_FLAGS} -I${CMAKE_SOURCE_DIR}/include -I${CMAKE_BINARY_DIR}" "${CMAKE_SOURCE_DIR}/src/Stencil.cpp" 
 set_top Jacobi 
 create_clock -period ${STENCIL_TARGET_TIMING} -name default
+# set_clock_uncertainty ${STENCIL_TIMING_UNCERTAINTY}
 csynth_design
 exit
