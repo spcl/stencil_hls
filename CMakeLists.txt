@@ -6,42 +6,48 @@ project(Stencil CXX)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 # Target platform
-set(STENCIL_TARGET "TUL-KU115-XPR" CACHE STRING "Target board for benchmark.")
+# TODO: take care of SDAccel versions. KU115 without XPR is not supported in
+#       SDAccel 2016.3+, etc.
+set(STENCIL_TARGET "TUL-KU115" CACHE STRING "Target board for benchmark.")
 if (STENCIL_TARGET STREQUAL "TUL-KU115")
   set(STENCIL_PART_NAME "xcku115-flvb2104-2-e") 
   set(STENCIL_DSA_STRING "xilinx:tul-pcie3-ku115:2ddr:3.1")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTENCIL_TUL_KU115")
-  set(STENCIL_DIMMS 2)
+  set(STENCIL_DIMMS_DEFAULT 2)
+  set(STENCIL_DIMMS_MAX 2)
 elseif (STENCIL_TARGET STREQUAL "TUL-KU115-XPR")
   set(STENCIL_PART_NAME "xcku115-flvb2104-2-e") 
   set(STENCIL_DSA_STRING "xilinx:xil-accel-rd-ku115:4ddr-xpr:3.2")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTENCIL_TUL_KU115_XPR")
-  set(STENCIL_DIMMS 4)
+  set(STENCIL_DIMMS_DEFAULT 2)
+  set(STENCIL_DIMMS_MAX 2) # Can potentially be 4
 elseif (STENCIL_TARGET STREQUAL "ADM-KU3")
   set(STENCIL_PART_NAME "xcku060-ffva1156-2-e") 
   set(STENCIL_DSA_STRING "xilinx:adm-pcie-ku3:2ddr:3.2")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTENCIL_ADM_KU3")
-  set(STENCIL_DIMMS 2)
+  set(STENCIL_DIMMS_DEFAULT 2)
+  set(STENCIL_DIMMS_MAX 2)
 elseif (STENCIL_TARGET STREQUAL "ADM-KU3-XPR")
   set(STENCIL_PART_NAME "xcku060-ffva1156-2-e") 
   set(STENCIL_DSA_STRING "xilinx:adm-pcie-ku3:2ddr-xpr:3.2")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTENCIL_ADM_KU3_XPR")
-  set(STENCIL_DIMMS 2)
+  set(STENCIL_DIMMS_DEFAULT 2)
+  set(STENCIL_DIMMS_MAX 2)
 elseif (STENCIL_TARGET STREQUAL "ADM-7V3")
   set(STENCIL_PART_NAME "xc7vx690tffg1157-2") 
   set(STENCIL_DSA_STRING "xilinx:adm-pcie-7v3:1ddr:3.0")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTENCIL_ADM_7V3")
-  set(STENCIL_DIMMS 1)
+  set(STENCIL_DIMMS_DEFAULT 1)
+  set(STENCIL_DIMMS_MAX 1)
 else()
   message(FATAL_ERROR "Unknown target \"${STENCIL_TARGET}\".")
 endif()
-set(STENCIL_KEEP_INTERMEDIATE OFF CACHE STRING
-    "Keep intermediate SDAccel files")
-set(STENCIL_NO_KERNEL OFF CACHE STRING
-    "Remove stencil kernel to benchmark memory only.")
-set(STENCIL_ENTRY_FUNCTION "Jacobi")
+mark_as_advanced(STENCIL_PART_NAME)
+mark_as_advanced(STENCIL_DSA_STRING)
+mark_as_advanced(STENCIL_DIMMS_DEFAULT)
+mark_as_advanced(STENCIL_DIMMS_MAX)
 
-# Domain configuration
+# User configuration
 set(STENCIL_DATA_TYPE "float" CACHE STRING "Data type.")
 set(STENCIL_TIME 32 CACHE STRING "Number of timesteps.")
 set(STENCIL_MEMORY_WIDTH 16 CACHE STRING "Width of memory port.")
@@ -52,6 +58,28 @@ set(STENCIL_ROWS 8192 CACHE STRING "Number of rows.")
 set(STENCIL_COLS 8192 CACHE STRING "Number of columns.")
 set(STENCIL_TARGET_CLOCK 200 CACHE STRING "Target clock speed.")
 set(STENCIL_TARGET_TIMING 5 CACHE STRING "Target timing of HLS.")
+set(STENCIL_DIMMS "" CACHE STRING "Override DSA default number of DIMMs to utilize.")
+set(STENCIL_KEEP_INTERMEDIATE OFF CACHE STRING "Keep intermediate SDAccel files")
+
+# Internal
+if(STENCIL_DIMMS AND (NOT (STENCIL_DIMMS EQUAL STENCIL_DIMMS_DEFAULT)))
+  if((NOT STENCIL_DIMMS EQUAL 1) AND (NOT STENCIL_DIMMS EQUAL 2))
+    message(FATAL_ERROR "Unsupported number of DIMMs: ${STENCIL_DIMMS} (must be 1 or 2).")
+  endif()
+  if(STENCIL_DIMMS GREATER STENCIL_DIMMS_MAX)
+    message(FATAL_ERROR "Unsupported number of DIMMS for target ${STENCIL_TARGET}: ${STENCIL_DIMMS} (maximum is ${STENCIL_DIMMS_MAX})")
+  endif()
+  set(STENCIL_DIMMS_INTERNAL ${STENCIL_DIMMS})
+else()
+  set(STENCIL_DIMMS_INTERNAL ${STENCIL_DIMMS_DEFAULT})
+endif()
+if(STENCIL_DIMMS_INTERNAL EQUAL 1)
+  set(STENCIL_ENTRY_FUNCTION "Jacobi")
+elseif(STENCIL_DIMMS_INTERNAL EQUAL 2)
+  set(STENCIL_ENTRY_FUNCTION "JacobiTwoDimms")
+endif()
+mark_as_advanced(STENCIL_DIMMS_INTERNAL)
+mark_as_advanced(STENCIL_ENTRY_FUNCTION)
 
 # Dependencies
 find_package(SDAccel REQUIRED)
@@ -65,9 +93,6 @@ set(STENCIL_LIBS ${SDACCEL_LIBS})
 
 # Compilation flags
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-if (STENCIL_NO_KERNEL)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTENCIL_NO_KERNEL")
-endif()
 
 # Source
 set(STENCIL_SRC
@@ -136,19 +161,14 @@ set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS}
 if(STENCIL_KEEP_INTERMEDIATE)
   set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS} -s)
 endif()
+if (STENCIL_DIMMS_INTERNAL EQUAL 2)
+  set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS}
+    --xp misc:map_connect=add.kernel.${STENCIL_ENTRY_FUNCTION}_1.M_AXI_GMEM0.core.OCL_REGION_0.M00_AXI
+    --xp misc:map_connect=add.kernel.${STENCIL_ENTRY_FUNCTION}_1.M_AXI_GMEM1.core.OCL_REGION_0.M01_AXI
+    --max_memory_ports all)
+endif()
 
-# if (STENCIL_DIMMS GREATER 3)
-#   set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS}
-#     --xp misc:map_connect=add.kernel.${STENCIL_ENTRY_FUNCTION}_1.M_AXI_GMEM2.core.OCL_REGION_0.M02_AXI
-#     --xp misc:map_connect=add.kernel.${STENCIL_ENTRY_FUNCTION}_1.M_AXI_GMEM3.core.OCL_REGION_0.M03_AXI)
-# endif()
-# if (STENCIL_DIMMS GREATER 1)
-#   set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS}
-#     --xp misc:map_connect=add.kernel.${STENCIL_ENTRY_FUNCTION}_1.M_AXI_GMEM0.core.OCL_REGION_0.M00_AXI
-#     --xp misc:map_connect=add.kernel.${STENCIL_ENTRY_FUNCTION}_1.M_AXI_GMEM1.core.OCL_REGION_0.M01_AXI
-#     --max_memory_ports all)
-# endif()
-
+# Kernel build
 add_custom_target(kernel
   COMMAND ${SDACCEL_XOCC} -t hw ${STENCIL_XOCC_FLAGS} -o
   ${STENCIL_KERNEL_STRING} 

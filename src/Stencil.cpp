@@ -13,32 +13,22 @@ void Jacobi(Memory_t const *in, Memory_t *out) {
   #pragma HLS DATAFLOW
 #ifndef STENCIL_SYNTHESIS
   std::vector<std::thread> threads;
-  hlslib::Stream<Memory_t> readBuffer("readBuffer");
-  hlslib::Stream<Kernel_t> kernelPipeIn("kernelPipeIn");
-  hlslib::Stream<Kernel_t> kernelPipeOut("kernelPipeOut");
-  hlslib::Stream<Memory_t> writeBuffer("writeBuffer");
-  threads.emplace_back(Read, in, std::ref(readBuffer));
-  threads.emplace_back(Widen, std::ref(readBuffer), std::ref(kernelPipeIn));
-  UnrollCompute<kDepth>(kernelPipeIn, kernelPipeOut, threads);
-  threads.emplace_back(Narrow, std::ref(kernelPipeOut), std::ref(writeBuffer));
-  threads.emplace_back(Write, std::ref(writeBuffer), out);
+  hlslib::Stream<Kernel_t> toKernel("toKernel");
+  hlslib::Stream<Kernel_t> fromKernel("fromKernel");
+  Read(in, toKernel, threads);
+  UnrollCompute<kDepth>(toKernel, fromKernel, threads);
+  Write(fromKernel, out, threads);
   for (auto &t : threads) {
     t.join();
   }
 #else
-  hls::stream<Memory_t> readBuffer("readBuffer");
-  #pragma HLS STREAM variable=readBuffer depth=kMemoryBufferDepth
-  hls::stream<Kernel_t> kernelPipeIn("kernelPipeIn");
-  #pragma HLS STREAM variable=kernelPipeIn depth=kPipeDepth
-  hls::stream<Kernel_t> kernelPipeOut("kernelPipeOut");
-  #pragma HLS STREAM variable=kernelPipeOut depth=kPipeDepth
-  hls::stream<Memory_t> writeBuffer("writeBuffer");
-  #pragma HLS STREAM variable=writeBuffer depth=kMemoryBufferDepth
-  Read(in, readBuffer);
-  Widen(readBuffer, kernelPipeIn);
-  UnrollCompute<kDepth>(kernelPipeIn, kernelPipeOut);
-  Narrow(kernelPipeOut, writeBuffer);
-  Write(writeBuffer, out);
+  hls::stream<Kernel_t> toKernel("toKernel");
+  #pragma HLS STREAM variable=toKernel depth=kPipeDepth
+  hls::stream<Kernel_t> fromKernel("fromKernel");
+  #pragma HLS STREAM variable=fromKernel depth=kPipeDepth
+  Read(in, toKernel);
+  UnrollCompute<kDepth>(toKernel, fromKernel);
+  Write(fromKernel, out);
 #endif
 }
 
@@ -54,5 +44,24 @@ void JacobiTwoDimms(Memory_t const *in0, Memory_t *out0,
   #pragma HLS INTERFACE s_axilite port=out1   bundle=control 
   #pragma HLS INTERFACE s_axilite port=return bundle=control 
   #pragma HLS DATAFLOW
+#ifndef STENCIL_SYNTHESIS
+  std::vector<std::thread> threads;
+  hlslib::Stream<Kernel_t> toKernel("toKernel");
+  hlslib::Stream<Kernel_t> fromKernel("fromKernel");
+  Read(in0, in1, toKernel, threads);
+  UnrollCompute<kDepth>(toKernel, fromKernel, threads);
+  Write(fromKernel, out0, out1, threads);
+  for (auto &t : threads) {
+    t.join();
+  }
+#else
+  hls::stream<Kernel_t> toKernel("toKernel");
+  #pragma HLS STREAM variable=toKernel depth=kPipeDepth
+  hls::stream<Kernel_t> fromKernel("fromKernel");
+  #pragma HLS STREAM variable=fromKernel depth=kPipeDepth
+  Read(in0, in1, toKernel);
+  UnrollCompute<kDepth>(toKernel, fromKernel);
+  Write(fromKernel, out0, out1);
+#endif
 }
 

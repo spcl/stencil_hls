@@ -6,10 +6,41 @@
 #include "Stencil.h"
 #include "hlslib/Stream.h"
 
-void Read(Memory_t const *input, hlslib::Stream<Memory_t> &buffer);
+#ifdef STENCIL_SYNTHESIS
 
-void Widen(hlslib::Stream<Memory_t> &in, hlslib::Stream<Kernel_t> &out);
+// Single DIMM
+void Read(Memory_t const *memory, hlslib::Stream<Kernel_t> &toKernel);
 
-void Narrow(hlslib::Stream<Kernel_t> &in, hlslib::Stream<Memory_t> &out);
+// Dual DIMM
+void Read(Memory_t const *memory0, Memory_t const *memory1,
+          hlslib::Stream<Kernel_t> &toKernel);
 
-void Write(hlslib::Stream<Memory_t> &buffer, Memory_t *output);
+// Single DIMM
+void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory);
+
+// Dual DIMM
+void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory0,
+           Memory_t *memory1);
+
+#else
+
+#include <thread>
+
+// Single DIMM
+void Read(Memory_t const *memory, hlslib::Stream<Kernel_t> &toKernel,
+          std::vector<std::thread> &threads);
+
+// Dual DIMM
+void Read(Memory_t const *memory0, Memory_t const *memory1,
+          hlslib::Stream<Kernel_t> &toKernel,
+          std::vector<std::thread> &threads);
+
+// Single DIMM
+void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory,
+           std::vector<std::thread> &threads);
+
+// Dual DIMM
+void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory0,
+           Memory_t *memory1, std::vector<std::thread> &threads);
+
+#endif

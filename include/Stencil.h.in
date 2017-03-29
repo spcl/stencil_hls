@@ -27,11 +27,11 @@ constexpr long kTotalInputMemory =
 constexpr long kTotalInputKernel =
     kRows * (2 * (kBlockWidthKernel + kHaloKernel) +
              (kBlocks - 2) * (kBlockWidthKernel + 2 * kHaloKernel));
-constexpr long kDimms = ${STENCIL_DIMMS};
+constexpr long kDimms = ${STENCIL_DIMMS_INTERNAL};
 using Kernel_t = hlslib::DataPack<Data_t, kKernelWidth>;
 using Memory_t = hlslib::DataPack<Kernel_t, kKernelPerMemory>;
 constexpr long kPipeDepth = 4;
-constexpr long kMemoryBufferDepth = 512;
+constexpr long kMemoryBufferDepth = kBlockWidthMemory;
 char const *const kDeviceDsaString = "${STENCIL_DSA_STRING}";
 char const *const kKernelString = "${STENCIL_KERNEL_STRING}";
 constexpr Data_t kBoundary = 1;
