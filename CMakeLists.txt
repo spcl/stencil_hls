@@ -69,12 +69,19 @@ if (STENCIL_NO_KERNEL)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTENCIL_NO_KERNEL")
 endif()
 
-# Dependencies
-set(STENCIL_HLS_DEPENDS
-    include/Stencil.h.in
-    include/Reference.h
+# Source
+set(STENCIL_SRC
     src/Stencil.cpp
     src/Reference.cpp
+    src/Memory.cpp)
+
+# Dependencies
+set(STENCIL_HLS_DEPENDS
+    ${STENCIL_SRC}
+    include/Stencil.h.in
+    include/Reference.h
+    include/Memory.h
+    include/Compute.h
     include/hlslib/SDAccel.h
     include/hlslib/DataPack.h
     include/hlslib/Utility.h
@@ -91,11 +98,15 @@ add_custom_target(synthesis
   COMMAND ${SDACCEL_VIVADO_HLS} -f Synthesis.tcl
   DEPENDS ${STENCIL_HLS_DEPENDS})
 
+# Library files
+add_library(stencil ${STENCIL_SRC})
+set(STENCIL_LIBS ${STENCIL_LIBS} stencil)
+
 # Testing
 enable_testing()
 find_package(Threads)
 if (Threads_FOUND)
-  add_executable(Testbench src/Testbench.cpp src/Stencil.cpp src/Reference.cpp)
+  add_executable(Testbench src/Testbench.cpp)
   target_link_libraries(Testbench ${STENCIL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
   add_test(Testbench Testbench)
 else()
@@ -107,7 +118,7 @@ add_executable(Stats src/Stats.cpp)
 target_link_libraries(Stats ${STENCIL_LIBS})
 
 # SDAccel
-add_executable(ExecuteKernel.exe src/ExecuteKernel.cpp src/Reference.cpp)
+add_executable(ExecuteKernel.exe src/ExecuteKernel.cpp)
 target_link_libraries(ExecuteKernel.exe ${STENCIL_LIBS})
 set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS} 
   -O3
@@ -115,6 +126,7 @@ set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS}
   -I${CMAKE_BINARY_DIR}
   -I${CMAKE_SOURCE_DIR}/include
   # Source
+  ${CMAKE_SOURCE_DIR}/src/Memory.cpp
   ${CMAKE_SOURCE_DIR}/src/Stencil.cpp
   # Flags
   --kernel ${STENCIL_ENTRY_FUNCTION} 
