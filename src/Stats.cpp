@@ -28,8 +28,10 @@ int main(int argc, char **argv) {
   std::cout << "Total elements: " << kRows * kCols << "\n";
   std::cout << "Data width:     " << kKernelWidth << " elements / "
             << sizeof(Kernel_t) << " bytes\n";
-  std::cout << "Total bursts:   " << kTotalElementsKernel << " / " << kTotalInputKernel 
-            << " with halos\n";
+  std::cout << "Bandwidth:      " << 2 * sizeof(Kernel_t) * 1e-3 * clock
+            << " GB/s\n";
+  std::cout << "Total bursts:   " << kTotalElementsKernel << " / "
+            << kTotalInputKernel << " with halos\n";
   std::cout << "Memory req.:    " << kBlocks * kRows * kTimeFolded << "\n";
   std::cout << "Depth:          " << kDepth << "\n";
   std::cout << "Blocks:         " << kBlocks << "\n";
