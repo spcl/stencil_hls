@@ -1,0 +1,13 @@
+{
+  "compute": {
+    "dspCount": 5520,
+    "lutCount": 663360,
+    "ffCount": 1326720,
+    "bramCount": 4320 
+  },
+  "memory": {
+    "clock": 2400e6,
+    "width": 64,
+    "dimms": 2
+  }
+}
