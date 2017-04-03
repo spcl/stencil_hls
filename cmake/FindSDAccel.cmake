@@ -57,10 +57,16 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
                NO_DEFAULT_PATH)
   mark_as_advanced(SDAccel_LIBXILINXOPENCL)
 
+  find_library(SDAccel_LIBFLOATINGPOINT Ip_floating_point_v7_0_bitacc_cmodel
+               PATHS ${SDACCEL_ROOT_DIR}/Vivado_HLS/lnx64/tools/fpo_v7_0)
+  mark_as_advanced(SDAccel_LIBFLOATINGPOINT)
+
   # Only succeed if all libraries were found
-  if(SDAccel_LIBLMX AND SDAccel_LIBOPENCL AND SDAccel_LIBXILINXOPENCL)
+  if(SDAccel_LIBLMX AND SDAccel_LIBOPENCL AND SDAccel_LIBXILINXOPENCL AND
+     SDAccel_LIBFLOATINGPOINT)
     set(SDAccel_LIBRARIES ${SDAccel_LIBXML} ${SDAccel_LIBOPENCL} 
-        ${SDAccel_LIBXILINXOPENCL} CACHE STRING "SDAccel runtime libraries.")
+        ${SDAccel_LIBXILINXOPENCL} ${SDAccel_LIBFLOATINGPOINT}
+        CACHE STRING "SDAccel runtime libraries.")
   endif()
 
   if(EXISTS ${SDACCEL_RUNTIME_LIBS}/libstdc++.so)

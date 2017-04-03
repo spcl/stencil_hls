@@ -34,7 +34,8 @@ constexpr long kPipeDepth = 4;
 constexpr long kMemoryBufferDepth = kBlockWidthMemory;
 char const *const kDeviceDsaString = "${STENCIL_DSA_STRING}";
 char const *const kKernelString = "${STENCIL_KERNEL_STRING}";
-constexpr Data_t kBoundary = 1;
+// Cannot be constexpr because half precision is a class
+const Data_t kBoundary = 1;
 constexpr float kTargetClock = ${STENCIL_TARGET_CLOCK};
 
 // Make up for misalignment between memory and kernel data width
