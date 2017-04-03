@@ -152,7 +152,7 @@ def run_build(conf, clean=True, hardware=True):
         print_status(conf, "FAILED after {}.".format(
             time_only(datetime.datetime.now() - timeStart)))
     else:
-      print_status(conf, " SUCCESS in {}.".format(
+      print_status(conf, "SUCCESS in {}.".format(
           time_only(datetime.datetime.now() - timeStart)))
   with open(os.path.join(confDir, "log.out"), "r") as logFile:
     m = re.search(
@@ -241,15 +241,27 @@ def check_build_status(conf):
         os.path.join(kernelFolder, kernelString + "_ipi", "vivado.log")).read()
   except:
     return "no_build"
+  m = re.search("Implementation Feasibility check failed", log)
+  if m:
+    return "failed_feasibility"
   m = re.search("Detail Placement failed", log)
   if m:
     return "failed_placement"
+  m = re.search("Placer could not place all instances", report)
+  if m:
+    return "failed_placement"
+  m = re.search("Routing results verification failed due to partially-conflicted nets", log)
+  if m:
+    return "failed_routing"
   m = re.search("Internal Data Exception", log)
   if m:
     return "crashed"
   m = re.search("auto frequency scaling failed", report)
   if m:
     return "failed_timing"
+  m = re.search("Unable to write message .+ as it exceeds maximum size", report)
+  if m:
+    return "failed_report"
   for fileName in os.listdir(kernelFolder):
     if len(fileName) >= 7 and fileName[-7:] == ".xclbin":
       return "success"
