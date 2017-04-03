@@ -146,8 +146,8 @@ set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS}
   -I${CMAKE_BINARY_DIR}
   -I${CMAKE_SOURCE_DIR}/include
   # Source
-  ${CMAKE_SOURCE_DIR}/src/Memory.cpp
   ${CMAKE_SOURCE_DIR}/src/Stencil.cpp
+  ${CMAKE_SOURCE_DIR}/src/Memory.cpp
   # Flags
   --kernel ${STENCIL_ENTRY_FUNCTION} 
   --xdevice ${STENCIL_DSA_STRING}
