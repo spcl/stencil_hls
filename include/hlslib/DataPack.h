@@ -111,7 +111,7 @@ public:
 
   void Fill(T const &value) {
     #pragma HLS INLINE
-  DataPackFill:
+  DataPackFillValue:
     for (int i = 0; i < width; ++i) {
       Set(i, value);
     }
@@ -119,7 +119,7 @@ public:
 
   void Fill(ap_uint<kBits> const &apVal) {
     #pragma HLS INLINE
-  DataPackFill:
+  DataPackFillApValue:
     for (int i = 0; i < width; ++i) {
       Set(i, apVal);
     }
