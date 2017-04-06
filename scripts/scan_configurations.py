@@ -436,7 +436,7 @@ def benchmark(repetitions):
     if run_process("make".split(), kernelFolder, pipe=False) != 0:
       raise Exception(confStr + ": software build failed.")
     for i in range(repetitions):
-      if run_process("./ExecuteKernel no".split(),
+      if run_process("./ExecuteKernel.exe off".split(),
                      kernelFolder, pipe=False) != 0:
         raise Exception(confStr + ": kernel execution failed.")
       shutil.copy(os.path.join(kernelFolder, "sdaccel_profile_summary.csv"),
