@@ -250,7 +250,7 @@ def check_build_status(conf):
   m = re.search("Placer could not place all instances", report)
   if m:
     return "failed_placement"
-  m = re.search("Routing results verification failed due to partially-conflicted nets", log)
+  m = re.search("Routing results verification failed due to partially-conflicted nets", report)
   if m:
     return "failed_routing"
   m = re.search("Internal Data Exception", log)
@@ -465,6 +465,10 @@ def print_usage():
         file=sys.stderr)
 
 if __name__ == "__main__":
+
+  if len(sys.argv) < 2:
+    print_usage()
+    sys.exit(1)
 
   if sys.argv[1] == "extract":
     if len(sys.argv) != 2:
