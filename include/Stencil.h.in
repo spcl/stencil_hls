@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <ap_int.h>
+#include <hls_half.h>
 #include <hlslib/DataPack.h>
 
 using Data_t = ${STENCIL_DATA_TYPE};

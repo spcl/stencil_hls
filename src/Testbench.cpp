@@ -19,7 +19,8 @@ bool Verify(std::vector<Data_t> const &reference,
           const auto expected =
               reference[kMemoryWidth * index + kKernelWidth * k + w];
           const auto actual = elem[w];
-          const auto diff = std::fabs(expected - actual); 
+          auto diff = expected - actual;
+          diff = (diff < 0) ? Data_t(-diff) : Data_t(diff);
           if (diff > 1e-4) {
             std::cerr << "Mismatch at (" << r << ", "
                       << c * kMemoryWidth + k * kKernelWidth + w

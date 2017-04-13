@@ -104,7 +104,8 @@ int main(int argc, char **argv) {
               const auto expected =
                   reference[kMemoryWidth * index + kKernelWidth * k + w];
               const auto actual = elem[w];
-              const auto diff = std::fabs(expected - actual);
+              auto diff = expected - actual;
+              diff = (diff < 0) ? Data_t(-diff) : Data_t(diff);
               if (diff > 1e-4) {
                 if (mismatches == 0) {
                   std::cerr << "Mismatch at (" << r << ", "
@@ -234,7 +235,8 @@ int main(int argc, char **argv) {
               const auto expected =
                   reference[kMemoryWidth * index + kKernelWidth * k + w];
               const auto actual = elem[w];
-              const auto diff = std::fabs(expected - actual);
+              auto diff = expected - actual;
+              diff = (diff < 0) ? Data_t(-diff) : Data_t(diff);
               if (diff > 1e-4) {
                 if (mismatches == 0) {
                   std::cerr << "Mismatch at (" << r << ", "

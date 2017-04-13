@@ -3,78 +3,43 @@
 
 #pragma once
 
-#include "ap_int.h"
+#include <cstddef> // ap_int.h will break some compilers if this is not included 
+#include <ap_int.h>
 
 namespace hlslib {
 
-template <typename T, int width>
-class DataPack;
-
 namespace {
 
-template <unsigned byteWidth>
-struct UnsignedIntType {};
-
-template <>
-struct UnsignedIntType<sizeof(unsigned char)> {
-  using T = unsigned char;
-};
-
-template <>
-struct UnsignedIntType<sizeof(unsigned short)> {
-  using T = unsigned short;
-};
-
-template <>
-struct UnsignedIntType<sizeof(unsigned int)> {
-  using T = unsigned int;
-};
-
-template <>
-struct UnsignedIntType<sizeof(unsigned long)> {
-  using T = unsigned long;
-};
-
 template <typename T, int width>
-class DataPackProxy {
-  static constexpr int kBits = 8 * width;
-public:
-  DataPackProxy(DataPack<T, width> &data, size_t index)
-      : index_(index), data_(data) {
-    #pragma HLS INLINE
-  }
-  ~DataPackProxy() {}
-  void operator=(T const &rhs) {
-    #pragma HLS INLINE
-    data_.Set(index_, rhs);
-  }
-  void operator=(DataPackProxy<T, width> const &rhs) {
-    #pragma HLS INLINE
-    // Implicit call to operator T()
-    data_.Set(index_, rhs);
-  }
-  operator T() const {
-    #pragma HLS INLINE
-    return data_.Get(index_);
-  }
-private:
-  size_t index_;
-  DataPack<T, width> &data_;
-};
+class DataPackProxy; // Forward declaration
 
 } // End anonymous namespace
 
+/// Class to accommodate SIMD-style vectorization of a data path on FPGA using
+/// ap_uint to force wide ports.
+///
+/// DataPacks can be nested, e.g. DataPack<DataPack<int, 4>, 4>, but the proxy
+/// class can cause some issues when using nested indices to assign values.
 template <typename T, int width>
 class DataPack {
 
   static_assert(width > 0, "Width must be positive");
 
-  using Pack_t = ap_uint<8 * sizeof(T)>;
   static constexpr int kBits = 8 * sizeof(T);
+  using Pack_t = ap_uint<kBits>;
+  using Internal_t = ap_uint<width * kBits>;
 
 public:
 
   DataPack() : data_() {
+    #pragma HLS INLINE
+  }
+
+  DataPack(DataPack<T, width> const &other) : data_(other.data_) {
+    #pragma HLS INLINE
+  }
+
+  DataPack(DataPack<T, width> &&other) : data_(other.data_) {
     #pragma HLS INLINE
   }
 
@@ -88,8 +53,18 @@ public:
     Pack(arr);
   }
 
-  DataPack(ap_uint<8 * width * sizeof(T)> const &data) : data_(data) {
+  DataPack(Internal_t const &data) : data_(data) {
     #pragma HLS INLINE
+  }
+
+  DataPack<T, width>& operator=(DataPack<T, width> &&other) {
+    #pragma HLS INLINE
+    data_ = other.data_;
+  }
+
+  DataPack<T, width>& operator=(DataPack<T, width> const &other) {
+    #pragma HLS INLINE
+    data_ = other.data_;
   }
 
   T Get(int i) const {
@@ -104,24 +79,12 @@ public:
     data_.range((i + 1) * kBits - 1, i * kBits) = temp;
   }
 
-  void Set(int i, ap_uint<kBits> value) {
-    #pragma HLS INLINE
-    data_.range((i + 1) * kBits - 1, i * kBits) = value;
-  }
-
   void Fill(T const &value) {
     #pragma HLS INLINE
   DataPackFill:
     for (int i = 0; i < width; ++i) {
+      #pragma HLS UNROLL
       Set(i, value);
-    }
-  }
-
-  void Fill(ap_uint<kBits> const &apVal) {
-    #pragma HLS INLINE
-  DataPackFill:
-    for (int i = 0; i < width; ++i) {
-      Set(i, apVal);
     }
   }
 
@@ -158,13 +121,14 @@ public:
     return Get(i);    
   }
 
-  DataPackProxy<T, width> operator[](const size_t i) {
-    #pragma HLS INLINE
-    return DataPackProxy<T, width>(*this, i);
-  }
+  DataPackProxy<T, width> operator[](const size_t i);
 
-  ap_uint<8 * width * sizeof(T)> data() const { return data_; }
+  // Access to internal data directly if necessary
+  Internal_t &data() { return data_; }
+  Internal_t data() const { return data_; }
 
+  /// Copy values from this DataPack into another DataPack, starting from
+  /// position src into position dst, and copying count elements.
   template <unsigned src, unsigned dst, unsigned count, int otherWidth>
   void ShiftTo(DataPack<T, otherWidth> &other) const {
     #pragma HLS INLINE
@@ -179,9 +143,71 @@ public:
 
 private:
 
-  ap_uint<8 * width * sizeof(T)> data_;
+  Internal_t data_;
 
 };
+
+namespace {
+
+/// Proxy class to allow assigning values to individual elements of the DataPack
+/// directly.
+template <typename T, int width>
+class DataPackProxy {
+
+  static constexpr int kBits = 8 * width;
+
+public:
+
+  DataPackProxy(DataPack<T, width> &data, int index)
+      : index_(index), data_(data) {
+    #pragma HLS INLINE
+  }
+
+  DataPackProxy(DataPackProxy<T, width> const &other) = default; 
+
+  DataPackProxy(DataPackProxy<T, width> &&) = default;
+
+  ~DataPackProxy() {}
+
+  void operator=(T const &rhs) {
+    #pragma HLS INLINE
+    data_.Set(index_, rhs);
+  }
+
+  void operator=(T &&rhs) {
+    #pragma HLS INLINE
+    data_.Set(index_, rhs);
+  }
+
+  void operator=(DataPackProxy<T, width> const &rhs) {
+    #pragma HLS INLINE
+    data_.Set(index_, static_cast<T>(rhs));
+  }
+
+  void operator=(DataPackProxy<T, width> &&rhs) {
+    #pragma HLS INLINE
+    data_.Set(index_, static_cast<T>(rhs));
+  }
+
+  operator T() const {
+    #pragma HLS INLINE
+    return data_.Get(index_);
+  }
+
+private:
+
+  int index_;
+  DataPack<T, width> &data_;
+
+};
+
+} // End anonymous namespace
+
+template <typename T, int width>
+DataPackProxy<T, width> DataPack<T, width>::operator[](const size_t i) {
+  #pragma HLS INLINE
+  return DataPackProxy<T, width>(*this, i);
+}
 
 template <typename T, int width>
 std::ostream& operator<<(std::ostream &os, DataPack<T, width> const &rhs) {
@@ -193,4 +219,4 @@ std::ostream& operator<<(std::ostream &os, DataPack<T, width> const &rhs) {
   return os;
 }
 
-} // End namespace hlsUtil
+} // End namespace hlslib 
