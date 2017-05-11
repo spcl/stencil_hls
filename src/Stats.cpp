@@ -28,11 +28,9 @@ int main(int argc, char **argv) {
   std::cout << "Total elements: " << kRows * kCols << "\n";
   std::cout << "Data width:     " << kKernelWidth << " elements / "
             << sizeof(Kernel_t) << " bytes\n";
-  std::cout << "Bandwidth:      " << 2 * sizeof(Kernel_t) * 1e-3 * clock
-            << " GB/s\n";
   std::cout << "Total bursts:   " << kTotalElementsKernel << " / "
             << kTotalInputKernel << " with halos\n";
-  std::cout << "Memory req.:    " << kBlocks * kRows * kTimeFolded << "\n";
+  std::cout << "Burst requests: " << kBlocks * kRows * kTimeFolded << "\n";
   std::cout << "Depth:          " << kDepth << "\n";
   std::cout << "Blocks:         " << kBlocks << "\n";
   std::cout << "Block size:     " << kBlockWidthKernel << " bursts / "
@@ -51,11 +49,13 @@ int main(int argc, char **argv) {
     std::cout << " (target " << kTargetClock << " MHz)";
   }
   std::cout << "\n";
-  std::cout << "Peak Op/Cycle:  " << OpsPerCycle() << "\n";
-  std::cout << "Peak Perf:      " << std::setprecision(4)
+  std::cout << "Instantiated Op/Cycle: " << OpsPerCycle() << "\n";
+  std::cout << "Instantiated Perf:     " << std::setprecision(4)
             << (OpsPerCycle() * clock) / 1000 << " GOp/s\n";
-  std::cout << "Real Op/Cycle:  "
+  std::cout << "Effective Op/Cycle:    "
             << static_cast<unsigned long>(Efficiency() * OpsPerCycle()) << "\n";
-  std::cout << "Real Perf:      " << std::setprecision(4)
+  std::cout << "Effective Perf:        " << std::setprecision(4)
             << (Efficiency() * OpsPerCycle() * clock) / 1000 << " GOp/s\n";
+  std::cout << "Bandwidth required to saturate: " << 2 * sizeof(Kernel_t) * 1e-3 * clock
+            << " GB/s\n";
 }
