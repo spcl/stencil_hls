@@ -37,3 +37,8 @@ unset XCL_EMULATION_MODE
 ```
 
 Running the kernel will print the resulting compute and memory performance.
+
+Source code
+-----------
+
+The main kernel is located in `src/Stencil.cpp`, with the majority of the functionality contained in `src/Compute.cpp` and `src/Memory.cpp`. Code from the headers in `include/hlslib` is also used.
