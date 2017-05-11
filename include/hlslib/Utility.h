@@ -1,16 +1,18 @@
-/// \author Johannes de Fine Licht (johannes.definelicht@inf.ethz.ch)
-/// \date December 2016
+/// @author    Johannes de Fine Licht (johannes.definelicht@inf.ethz.ch)
+/// @date      December 2016
+/// @copyright This software is copyrighted under the BSD 3-Clause License. 
 
 #pragma once
 
-#include <hls_stream.h>
-
 namespace hlslib {
+
+// Constexpr methods for compile-time computations
 
 constexpr unsigned char ConstLog2(unsigned long val) {
   return val == 0 ? 0 : 1 + ConstLog2(val >> 1);
 }
 
+// Integer division with ceil instead of floor
 template <typename T>
 constexpr T CeilDivide(T a, T b) {
   return (a + b - 1) / b;

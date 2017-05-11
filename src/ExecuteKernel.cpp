@@ -45,13 +45,13 @@ int main(int argc, char **argv) {
         std::cout << "Initializing memory..." << std::flush;
         host = std::vector<Memory_t>(2 * kTotalElementsMemory,
                                      Memory_t(Kernel_t(static_cast<Data_t>(0))));
-        device.CopyToDevice(host.cbegin());
+        device.CopyFromHost(host.cbegin());
         std::cout << " Done." << std::endl;
       }
 
       std::cout << "Creating kernel..." << std::flush;
       auto kernel =
-          context.MakeKernelFromBinary(kKernelString, "Jacobi", device, device);
+          context.MakeKernel(kKernelString, "Jacobi", device, device);
       std::cout << " Done." << std::endl;
 
       const auto readSize =
@@ -161,13 +161,13 @@ int main(int argc, char **argv) {
             kTotalElementsMemory, Memory_t(Kernel_t(static_cast<Data_t>(0))));
         hostSplit1 = std::vector<Memory_t>(
             kTotalElementsMemory, Memory_t(Kernel_t(static_cast<Data_t>(0))));
-        device0.CopyToDevice(hostSplit0.cbegin());
-        device1.CopyToDevice(hostSplit1.cbegin());
+        device0.CopyFromHost(hostSplit0.cbegin());
+        device1.CopyFromHost(hostSplit1.cbegin());
         std::cout << " Done." << std::endl;
       }
 
       std::cout << "Creating kernel..." << std::flush;
-      auto kernel = context.MakeKernelFromBinary(
+      auto kernel = context.MakeKernel(
           kKernelString, "JacobiTwoDimms", device0, device0, device1, device1);
       std::cout << " Done." << std::endl;
 
