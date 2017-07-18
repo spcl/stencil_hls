@@ -1,7 +1,7 @@
 # Author:  Johannes de Fine Licht (johannes.definelicht@inf.ethz.ch)
 # Created: March 2017
 cmake_minimum_required(VERSION 2.8.12)
-project(Stencil CXX)
+project(Stencil C CXX)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
@@ -77,7 +77,7 @@ set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS}
   --kernel Kernel 
   --xdevice ${STENCIL_DSA_STRING}
   --xp prop:kernel.Kernel.kernel_flags="${CMAKE_CXX_FLAGS} -DSTENCIL_SYNTHESIS -DHLSLIB_SYNTHESIS"
-  --kernel_frequency=${STENCIL_TARGET_CLOCK})
+   --kernel_frequency=${STENCIL_TARGET_CLOCK})
 if (NOT STENCIL_USE_SINGLE_DIMM)
   set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS}
       --xp misc:map_connect=add.kernel.Kernel_1.M_AXI_GMEM0.core.OCL_REGION_0.M00_AXI
