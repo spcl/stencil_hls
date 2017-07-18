@@ -7,7 +7,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 # Target platform
 set(STENCIL_PART_NAME "xcku115-flvb2104-2-e") 
-set(STENCIL_DSA_STRING "xilinx:tul-pcie3-ku115:2ddr:3.1")
+set(STENCIL_DSA_STRING "xilinx:xil-accel-rd-ku115:4ddr-xpr:4.0")
 set(STENCIL_DIMMS 2 CACHE STRING "Number of DDR DIMMs to target")
 # set(STENCIL_TARGET "TUL-KU115" CACHE STRING "Target board.")
 # if (STENCIL_TARGET STREQUAL "TUL-KU115")
