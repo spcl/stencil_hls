@@ -75,7 +75,7 @@ def cmake_command(conf, options=""):
             conf.compute, conf.width))
   depth = int(conf.compute / conf.width)
   time = int(conf.timeFactor * conf.compute)
-  return ("cmake ../../ " + " ".join(options) +
+  return ("cmake $1 " + " ".join(options) +
           " -DSTENCIL_KEEP_INTERMEDIATE=ON" +
           " -DSTENCIL_TARGET={}".format(conf.target) +
           " -DSTENCIL_DATA_TYPE={}".format(conf.dtype) +
@@ -120,7 +120,9 @@ def print_status(conf, status):
 def run_build(conf, clean=True, hardware=True):
   confStr = conf_string(conf)
   confDir = os.path.join("scan", "build_" + confStr)
-  if run_process("sh Configure.sh".split(), confDir) != 0:
+  sourceDir = os.path.join(
+      os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+  if run_process(["sh", "Configure.sh", sourceDir], confDir) != 0:
     raise Exception(confStr + ": Configuration failed.")
   if clean:
     print_status(conf, "cleaning folder...")
