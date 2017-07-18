@@ -1,0 +1,8 @@
+{
+  "compute": {
+    "dspCount": 900,
+    "lutCount": 218600,
+    "ffCount": 437200,
+    "bramCount": 1090 
+  }
+}
