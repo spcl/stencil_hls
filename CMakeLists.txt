@@ -1,7 +1,7 @@
 # Author:  Johannes de Fine Licht (johannes.definelicht@inf.ethz.ch)
 # Created: March 2017
 cmake_minimum_required(VERSION 2.8.12)
-project(Stencil CXX)
+project(Stencil C CXX)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
