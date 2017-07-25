@@ -383,7 +383,14 @@ def unpackage_configuration(conf):
   except FileExistsError:
     pass
   for path in filesToCopy:
-    shutil.copy(os.path.join(sourceDir, path), os.path.join(targetDir, path))
+    try:
+      shutil.copy(os.path.join(sourceDir, path), os.path.join(targetDir, path))
+    except FileNotFoundError as err:
+      if path.endswith("power_routed.rpt"):
+        # Power report is disabled in newer SDx
+        pass
+      else:
+        raise err
   with open(os.path.join(targetDir, "Configure.sh"), "r") as inFile:
     confStr = inFile.read()
   with open(os.path.join(targetDir, "Configure.sh"), "w") as outFile:
