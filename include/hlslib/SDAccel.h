@@ -14,11 +14,7 @@
 #include <string>
 #include <vector>
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
-#ifdef __APPLE__
-#include <OpenCL/opencl.h>
-#else
 #include <CL/opencl.h>
-#endif
 
 namespace hlslib {
 
@@ -649,6 +645,11 @@ public:
     // Pass kernel arguments 
     SetKernelArguments(0, kernelArgs...);
 
+  }
+
+  ~Kernel() {
+    clReleaseKernel(kernel_);
+    clReleaseProgram(program_);
   }
 
   /// Execute the kernel as an OpenCL task and returns the time elapsed as
