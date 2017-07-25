@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
               hlslib::ocl::MemoryBank::bank0, kTotalElementsMemory);
       auto device1 =
           context.MakeBuffer<Memory_t, hlslib::ocl::Access::readWrite>(
-              hlslib::ocl::MemoryBank::bank0, kTotalElementsMemory);
+              hlslib::ocl::MemoryBank::bank1, kTotalElementsMemory);
       std::cout << " Done." << std::endl;
 
       if (verify) {

@@ -82,5 +82,47 @@
         "bram": 0
 			}
 		}
-	}
+	},
+  "double": {
+    "add": {
+      "DAddSub_fulldsp": {
+        "lut": 677,
+        "ff": 952,
+        "dsp": 3,
+        "bram": 0
+      },
+      "DAddSub_nodsp": {
+        "lut": 707,
+        "ff": 1067,
+        "dsp": 0,
+        "bram": 0
+      }
+    },
+    "mult": {
+      "DMul_dspfull": {
+        "lut": 203,
+        "ff": 564,
+        "dsp": 7,
+        "bram": 0
+      },
+      "DMul_dspmax": {
+        "lut": 177,
+        "ff": 556,
+        "dsp": 8,
+        "bram": 0
+      },
+      "DMul_dspmed": {
+        "lut": 248,
+        "ff": 623,
+        "dsp": 6,
+        "bram": 0
+      },
+      "DMul_dspnone": {
+        "lut": 2233,
+        "ff": 2421,
+        "dsp": 0,
+        "bram": 0
+      }
+    }
+  }
 }

@@ -6,6 +6,10 @@
 
 #include <cstddef>
 
+// Time in seconds until a blocking call on a stream should timeout and emit a
+// warning before going back to sleep
+constexpr int kSecondsToTimeout = 3;
+
 // This macro must be defined when synthesizing. Synthesis will fail otherwise.
 #ifdef HLSLIB_SYNTHESIS
 
@@ -84,7 +88,9 @@ bool IsFullSimulationOnly(Stream<T> &stream, int) {
   return false;
 }
 
-}
+template <typename T> void SetName(Stream<T> &stream, const char *) {}
+
+} // End namespace hlslib
 
 #else 
 
@@ -181,11 +187,21 @@ bool IsFullSimulationOnly(Stream<T> &stream, int size) {
   return stream.IsFull(size);
 }
 
+/// Set the name of a stream. Useful when initializing arrays of streams that
+/// cannot be constructed individually. Currently only raw strings are supported.
+template <typename T>
+void SetName(Stream<T> &stream, const char *name) {
+  stream.set_name(name);
+}
+
+/// For internal use. Used to store arrays of streams of different types
+class _StreamBase {};
+
 /// Custom stream implementation, whose constructor mimics that of hls::stream.
 /// All other methods should be called via the free functions, as they do not
 /// conform to the interface of hls::stream.
 template <typename T>
-class Stream {
+class Stream : public _StreamBase {
 
 public:
 
@@ -208,11 +224,15 @@ public:
     }
   }
 
+  std::string const &name() const { return name_; }
+
+  void set_name(std::string const &name) { name_ = name; }
+
   void ReadSynchronize(std::unique_lock<std::mutex> &lock) {
     (void)lock; // Silence unused warning
 #ifdef HLSLIB_STREAM_SYNCHRONIZE
     while (!readNext_) {
-      if (cvSync_.wait_for(lock, std::chrono::seconds(3)) ==
+      if (cvSync_.wait_for(lock, std::chrono::seconds(kSecondsToTimeout)) ==
           std::cv_status::timeout) {
         std::stringstream ss;
         ss << "Stream synchronization stuck on \"" << name_
@@ -236,7 +256,13 @@ public:
         std::cout << ss.str();
       }
       slept = true;
-      cvRead_.wait(lock);
+      if (cvRead_.wait_for(lock, std::chrono::seconds(kSecondsToTimeout)) ==
+          std::cv_status::timeout) {
+        std::stringstream ss;
+        ss << "Stream \"" << name_
+           << "\" is stuck as being EMPTY. Possibly a deadlock?" << std::endl;
+        std::cerr << ss.str();
+      }
     }
     if (kStreamVerbose && slept) {
       std::stringstream ss;
@@ -277,7 +303,7 @@ public:
     (void)lock; // Silence unused warning
 #ifdef HLSLIB_STREAM_SYNCHRONIZE
     while (readNext_) {
-      if (cvSync_.wait_for(lock, std::chrono::seconds(3)) ==
+      if (cvSync_.wait_for(lock, std::chrono::seconds(kSecondsToTimeout)) ==
           std::cv_status::timeout) {
         std::stringstream ss;
         ss << "Stream synchronization stuck on \"" << name_
@@ -302,7 +328,13 @@ public:
         std::cout << ss.str();
       }
       slept = true;
-      cvWrite_.wait(lock);
+      if (cvWrite_.wait_for(lock, std::chrono::seconds(kSecondsToTimeout)) ==
+          std::cv_status::timeout) {
+        std::stringstream ss;
+        ss << "Stream \"" << name_
+           << "\" is stuck as being FULL. Possibly a deadlock?" << std::endl;
+        std::cerr << ss.str();
+      }
     }
     if (kStreamVerbose && slept) {
       std::stringstream ss;

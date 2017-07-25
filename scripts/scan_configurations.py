@@ -77,9 +77,9 @@ def cmake_command(conf, options=""):
   time = int(conf.timeFactor * conf.compute)
   return ("cmake $1 " + " ".join(options) +
           " -DSTENCIL_KEEP_INTERMEDIATE=ON" +
-          " -DSTENCIL_TARGET={}".format(conf.target) +
           " -DSTENCIL_DATA_TYPE={}".format(conf.dtype) +
           " -DSTENCIL_TARGET_CLOCK={}".format(int(conf.targetClock)) +
+          " -DSTENCIL_TARGET={}".format(conf.target) +
           " -DSTENCIL_TARGET_TIMING={}".format(1000/conf.targetClock) +
           " -DSTENCIL_KERNEL_WIDTH={}".format(conf.width) +
           " -DSTENCIL_DEPTH={}".format(depth) +
@@ -92,7 +92,7 @@ def create_builds(conf):
   cmakeCommand = cmake_command(conf, options=conf.options)
   print("Starting build " + str(conf))
   confStr = conf_string(conf)
-  confDir = os.path.join("scan", "build_" + confStr)
+  confDir = os.path.join(os.getcwd(), "scan", "build_" + confStr)
   try:
     os.makedirs(confDir)
   except:
@@ -119,7 +119,7 @@ def print_status(conf, status):
 
 def run_build(conf, clean=True, hardware=True):
   confStr = conf_string(conf)
-  confDir = os.path.join("scan", "build_" + confStr)
+  confDir = os.path.join(os.getcwd(), "scan", "build_" + confStr)
   sourceDir = os.path.join(
       os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
   if run_process(["sh", "Configure.sh", sourceDir], confDir) != 0:
@@ -167,7 +167,7 @@ def run_build(conf, clean=True, hardware=True):
         clockFile.write(m.group(1))
 
 def extract_result_build(conf):
-  buildFolder = os.path.join("scan", "build_" + conf_string(conf))
+  buildFolder = os.path.join(os.getcwd(), "scan", "build_" + conf_string(conf))
   kernelString = kernel_string(conf)
   xoccFolder = "_xocc_Stencil_" + kernelString + ".dir"
   if not os.path.exists(os.path.join(buildFolder, xoccFolder)):
@@ -228,7 +228,7 @@ def extract_result_build(conf):
       conf, status, luts, ff, dsp, bram, power, clock)
 
 def check_build_status(conf):
-  buildFolder = os.path.join("scan", "build_" + conf_string(conf))
+  buildFolder = os.path.join(os.getcwd(), "scan", "build_" + conf_string(conf))
   kernelString = kernel_string(conf)
   kernelFolder = os.path.join(
       buildFolder, "_xocc_Stencil_" + kernelString + ".dir",
@@ -281,14 +281,14 @@ def get_conf(folderName):
 
 def extract_to_file():
   confs = []
-  for fileName in os.listdir("scan"):
+  for fileName in os.listdir(os.path.join(os.getcwd(), "scan")):
     conf = get_conf(fileName)
     if not conf:
       continue
     print("Extracting {}...".format(fileName))
     extract_result_build(conf)
     confs.append(conf)
-  with open(os.path.join("scan", "results.csv"), "w") as resultFile:
+  with open(os.path.join(os.getcwd(), "scan", "results.csv"), "w") as resultFile:
     resultFile.write(Consumption.csv_cols() + "\n")
     for conf in confs:
       resultFile.write(str(conf.consumption) + "\n")
@@ -331,13 +331,13 @@ def files_to_copy(conf):
 
 def package_configurations(target):
   packagedSomething = False
-  for fileName in os.listdir("scan"):
+  for fileName in os.listdir(os.path.join(os.getcwd(), "scan")):
     conf = get_conf(fileName)
     if not conf:
       continue
     if conf.target != target:
       continue
-    sourceDir = os.path.join("scan", fileName)
+    sourceDir = os.path.join(os.getcwd(), "scan", fileName)
     packageFolder = os.path.join(target, fileName)
     kernelName = None
     kernelPath = None
@@ -379,7 +379,7 @@ def unpackage_configuration(conf):
   fileName = "build_" + confStr
   print("Unpackaging {}...".format(confStr))
   sourceDir = os.path.join(conf.target, fileName)
-  targetDir = os.path.join("scan", fileName)
+  targetDir = os.path.join(os.getcwd(), "scan", fileName)
   implFolder, filesToCopy = files_to_copy(conf)
   try:
     os.makedirs(os.path.join(targetDir, implFolder))
@@ -389,8 +389,8 @@ def unpackage_configuration(conf):
     try:
       shutil.copy(os.path.join(sourceDir, path), os.path.join(targetDir, path))
     except FileNotFoundError as err:
-      # The power report seems to be disabled by default in 2017.1
       if path.endswith("power_routed.rpt"):
+        # Power report is disabled in newer SDx
         pass
       else:
         raise err
@@ -422,13 +422,13 @@ def unpackage_configurations(target):
     print("No kernels found in \"{}\".".format(target))
 
 def benchmark(repetitions):
-  for fileName in os.listdir("scan"):
+  for fileName in os.listdir(os.path.join(os.getcwd(), "scan")):
     conf = get_conf(fileName)
     if not conf:
       continue
     confStr = conf_string(conf)
     folderName = "benchmark_" + confStr
-    kernelFolder = os.path.join("scan", fileName)
+    kernelFolder = os.path.join(os.getcwd(), "scan", fileName)
     kernelString = kernel_string(conf)
     kernelPath = os.path.join(kernelFolder, kernelString + ".xclbin")
     if not os.path.exists(kernelPath):
