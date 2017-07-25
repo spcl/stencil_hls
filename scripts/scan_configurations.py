@@ -82,7 +82,6 @@ def cmake_command(conf, options=""):
           " -DSTENCIL_TARGET_CLOCK={}".format(int(conf.targetClock)) +
           " -DSTENCIL_TARGET_TIMING={}".format(1000/conf.targetClock) +
           " -DSTENCIL_KERNEL_WIDTH={}".format(conf.width) +
-          " -DSTENCIL_MEMORY_WIDTH={}".format(16) +
           " -DSTENCIL_DEPTH={}".format(depth) +
           " -DSTENCIL_ROWS={}".format(conf.dim) +
           " -DSTENCIL_COLS={}".format(conf.dim) +
@@ -91,6 +90,7 @@ def cmake_command(conf, options=""):
 
 def create_builds(conf):
   cmakeCommand = cmake_command(conf, options=conf.options)
+  print("Starting build " + str(conf))
   confStr = conf_string(conf)
   confDir = os.path.join("scan", "build_" + confStr)
   try:
@@ -362,6 +362,9 @@ def package_configurations(target):
         if path.endswith("vivado_warning.txt"):
           with open(os.path.join(packageFolder, path), "w") as outFile:
             pass
+        elif path.endswith("power_routed.rpt"):
+          # The power report seems to be disabled by default in 2017.1
+          pass
         else:
           raise err
     packagedSomething = True
@@ -383,7 +386,14 @@ def unpackage_configuration(conf):
   except FileExistsError:
     pass
   for path in filesToCopy:
-    shutil.copy(os.path.join(sourceDir, path), os.path.join(targetDir, path))
+    try:
+      shutil.copy(os.path.join(sourceDir, path), os.path.join(targetDir, path))
+    except FileNotFoundError as err:
+      # The power report seems to be disabled by default in 2017.1
+      if path.endswith("power_routed.rpt"):
+        pass
+      else:
+        raise err
   with open(os.path.join(targetDir, "Configure.sh"), "r") as inFile:
     confStr = inFile.read()
   with open(os.path.join(targetDir, "Configure.sh"), "w") as outFile:
