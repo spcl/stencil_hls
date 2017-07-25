@@ -27,7 +27,18 @@ ReadTime:
                              b * kBlockWidthMemory + c - shift;
           assert(index >= 0);
           assert(index < 2 * kTotalElementsSplit);
-          const auto read = input[index];
+          // Vivado HLS 2017.1 gives the following error when assigning a
+          // Memory_t variable directly when compiling for half precision
+          // floating point:
+          // ERROR: [XFORM 203-801] Interface mode 'ap_auto' on the actual
+          // argument 'memoryBlock.data_.V' (stencil_sdaccel/src/Memory.cpp:191)
+          // is incompatible with the mode 'm_axi' on the formal argument
+          // 'other.data_.V' for function '_ZN6hlslib8DataPackI'
+          // (stencil_sdaccel/include/hlslib/DataPack.h:37:2). Please consider
+          // to duplicate the function to avoid mode conflicts.
+          const auto raw = input[index].data();
+          Memory_t read;
+          read.data() = raw;
           if ((b > 0 || c < kBlockWidthMemory + kHaloMemory) &&
               (b < kBlocks - 1 || c >= kHaloMemory)) {
             hlslib::WriteBlocking(buffer, read, kMemoryBufferDepth);
