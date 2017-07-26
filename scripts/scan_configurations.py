@@ -316,9 +316,12 @@ def files_to_copy(conf):
                  kernel_string(conf) + ".xclbin"]
   kernelString = kernel_string(conf)
   xoccFolder = "_xocc_Stencil_" + kernel_string(conf) + ".dir"
+  hlsFolder = os.path.join(
+      xoccFolder, "impl", "kernels", "JacobiTwoDimms")
   kernelFolder = os.path.join(
       xoccFolder, "impl", "build",
       "system", kernelString, "bitstream", kernelString + "_ipi")
+  filesToCopy.append(os.path.join(hlsFolder, "vivado_hls.log"))
   filesToCopy.append(os.path.join(kernelFolder, "vivado.log"))
   filesToCopy.append(os.path.join(kernelFolder, "vivado_warning.txt"))
   implFolder = os.path.join(
@@ -469,8 +472,8 @@ def print_usage():
         "[<additional CMake options...>]" +
         "\n  ./scan_configurations.py extract" +
         "\n  ./scan_configurations.py package_kernels <target>" +
-        "\n  ./scan_configurations.py unpackage_kernels" +
-        "\n  ./scan_configurations.py benchmark <number of repetitions...>",
+        "\n  ./scan_configurations.py unpackage_kernels <target>" +
+        "\n  ./scan_configurations.py benchmark <number of repetitions>",
         file=sys.stderr)
 
 if __name__ == "__main__":
@@ -498,7 +501,7 @@ if __name__ == "__main__":
     if len(sys.argv) != 3:
       print_usage()
       sys.exit(1)
-    benchmark(int(sys.argv[2]))
+    benchmark(int(sys.argv[3]))
     sys.exit(0)
 
   if sys.argv[1] == "package_kernels":
