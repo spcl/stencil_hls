@@ -141,7 +141,9 @@ target_link_libraries(Stats ${STENCIL_LIBS})
 add_executable(ExecuteKernel.exe src/ExecuteKernel.cpp)
 target_link_libraries(ExecuteKernel.exe ${STENCIL_LIBS})
 set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS} 
+  -t hw
   -O3
+  -s
   # Includes
   -I${CMAKE_BINARY_DIR}
   -I${CMAKE_SOURCE_DIR}/include
@@ -165,6 +167,5 @@ endif()
 
 # Kernel build
 add_custom_target(kernel
-  COMMAND ${SDAccel_XOCC} -t hw ${STENCIL_XOCC_FLAGS} -o
-  ${STENCIL_KERNEL_STRING} 
+  COMMAND ${SDAccel_XOCC} ${STENCIL_XOCC_FLAGS} -o ${STENCIL_KERNEL_STRING} 
   DEPENDS ${STENCIL_HLS_DEPENDS})
