@@ -153,8 +153,16 @@ ComputeFlat:
         const Data_t westVal = west[w];
         const Data_t eastVal = east[w];
         const Data_t southVal = south[w];
-        const Data_t factor = 0.25;
-        result[w] = factor * (northVal + westVal + eastVal + southVal);
+        const Data_t factor = 0.25; // Cannot be constexpr due to half precision
+        const Data_t add0 = northVal + westVal;
+        const Data_t add1 = add0 + eastVal;
+        const Data_t add2 = add1 + southVal;
+        STENCIL_RESOURCE_PRAGMA_ADD(add0);
+        STENCIL_RESOURCE_PRAGMA_ADD(add1);
+        STENCIL_RESOURCE_PRAGMA_ADD(add2);
+        const Data_t mult = factor * add2;
+        STENCIL_RESOURCE_PRAGMA_MULT(mult);
+        result[w] = mult;
       }
 
       // Only output values if the next unit needs them
