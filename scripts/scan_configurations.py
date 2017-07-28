@@ -15,7 +15,7 @@ def conf_string(conf):
           str(conf.dim) + "x" + str(conf.dim) + "_b" + str(conf.blocks) + "_t" +
           str(conf.timeFactor))
 
-def run_process(command, directory, pipe=True, logPath="log"):
+def run_process(command, directory, pipe=True, logPath="log", timeout=None):
   if pipe:
     proc = sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE,
                     universal_newlines=True, cwd=directory)
@@ -27,7 +27,11 @@ def run_process(command, directory, pipe=True, logPath="log"):
   else:
     proc = sp.Popen(command,
                     universal_newlines=True, cwd=directory)
-    proc.communicate()
+    try:
+      proc.communicate(timeout=timeout)
+    except sp.TimeoutExpired as err:
+      proc.terminate()
+      raise err
   return proc.returncode
 
 class Consumption(object):
@@ -438,6 +442,7 @@ def benchmark(repetitions):
       continue
     with open(os.path.join(kernelFolder, "frequency.txt"), "r") as clockFile:
       realClock = clockFile.read()
+    print(kernelFolder, realClock)
     pattern = re.compile("(benchmark_[^_]+)_[0-9]+_([0-9]+_[0-9]+_[0-9]+)")
     benchmarkFolder = os.path.join("benchmarks",
                                    pattern.sub("\\1_{}_\\2".format(realClock),
@@ -450,15 +455,30 @@ def benchmark(repetitions):
     print("Running {}...".format(confStr))
     if run_process("make".split(), kernelFolder, pipe=False) != 0:
       raise Exception(confStr + ": software build failed.")
-    for i in range(repetitions):
-      if run_process("./ExecuteKernel.exe off".split(),
-                     kernelFolder, pipe=False) != 0:
+    repsDone = 0
+    timeouts = 0
+    while repsDone < repetitions:
+      print("Running iteration {} / {}...".format(repsDone + 1, repetitions))
+      try:
+        ret = run_process("./ExecuteKernel.exe off".split(),
+                          kernelFolder, pipe=False, timeout=60)
+      except sp.TimeoutExpired as err:
+        timeouts += 1
+        if timeouts > 10:
+          print("\n" + confStr + ": exceeded maximum number of timeouts. Skipping.")
+          break
+        else:
+          print(confStr + ": timeout occurred. Retrying...")
+          continue
+      if ret != 0:
         raise Exception(confStr + ": kernel execution failed.")
-      shutil.copy(os.path.join(kernelFolder, "sdaccel_profile_summary.csv"),
+      repsDone += 1
+      timeouts = 0
+      profilePath = os.path.join(kernelFolder, "sdaccel_profile_summary.csv")
+      shutil.copy(profilePath,
                   os.path.join(benchmarkFolder,
                                str(datetime.datetime.now()).replace(" ", "_")
                                + ".csv"))
-
 
 def print_usage():
   print("Usage: " +
@@ -476,7 +496,7 @@ def print_usage():
         "\n  ./scan_configurations.py extract" +
         "\n  ./scan_configurations.py package_kernels <target>" +
         "\n  ./scan_configurations.py unpackage_kernels <target>" +
-        "\n  ./scan_configurations.py benchmark <number of repetitions>",
+        "\n  ./scan_configurations.py benchmark",
         file=sys.stderr)
 
 if __name__ == "__main__":
@@ -504,7 +524,7 @@ if __name__ == "__main__":
     if len(sys.argv) != 3:
       print_usage()
       sys.exit(1)
-    benchmark(int(sys.argv[3]))
+    benchmark(int(sys.argv[2]))
     sys.exit(0)
 
   if sys.argv[1] == "package_kernels":
