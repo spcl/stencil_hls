@@ -262,6 +262,9 @@ def check_build_status(conf):
   m = re.search("Internal Data Exception", log)
   if m:
     return "crashed"
+  m = re.search("Design failed to meet timing - hold violation.", report)
+  if m:
+    return "failed_hold"
   m = re.search("auto frequency scaling failed", report)
   if m:
     return "failed_timing"
@@ -334,7 +337,7 @@ def files_to_copy(conf):
       implFolder, "xcl_design_wrapper_utilization_placed.rpt"))
   filesToCopy.append(os.path.join(
       implFolder, "xcl_design_wrapper_power_routed.rpt"))
-  return implFolder, filesToCopy
+  return implFolder, hlsFolder, filesToCopy
 
 def package_configurations(target):
   packagedSomething = False
@@ -356,9 +359,13 @@ def package_configurations(target):
     if kernelPath == None or not os.path.exists(kernelPath):
       continue
     print("Packaging {}...".format(fileName))
-    implFolder, filesToCopy = files_to_copy(conf)
+    implFolder, hlsFolder, filesToCopy = files_to_copy(conf)
     try:
       os.makedirs(os.path.join(packageFolder, implFolder))
+    except FileExistsError:
+      pass
+    try:
+      os.makedirs(os.path.join(packageFolder, hlsFolder))
     except FileExistsError:
       pass
     for path in filesToCopy:
@@ -387,7 +394,11 @@ def unpackage_configuration(conf):
   print("Unpackaging {}...".format(confStr))
   sourceDir = os.path.join(conf.target, fileName)
   targetDir = os.path.join(os.getcwd(), "scan", fileName)
-  implFolder, filesToCopy = files_to_copy(conf)
+  implFolder, kernelFolder, filesToCopy = files_to_copy(conf)
+  try:
+    os.makedirs(os.path.join(targetDir, kernelFolder))
+  except FileExistsError:
+    pass
   try:
     os.makedirs(os.path.join(targetDir, implFolder))
   except FileExistsError:
