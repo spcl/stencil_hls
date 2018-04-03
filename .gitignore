@@ -1,1 +1,6 @@
 __pycache__
+.ycm_extra_conf.py
+vivado_hls.log
+vivado_hls.jou
+vivado.log
+vivado.jou
