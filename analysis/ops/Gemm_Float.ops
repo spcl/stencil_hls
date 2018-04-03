@@ -1,0 +1,11 @@
+{
+  "float": {
+    "add": {
+      "FAddSub_fulldsp": 1
+    },
+    "mult": {
+      "FMul_fulldsp": 1
+    }
+  }
+}
+
