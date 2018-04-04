@@ -32,9 +32,9 @@ int main(int argc, char **argv) {
 
     try {
 
-      std::cout << "Creating OpenCL context..." << std::flush;
-      hlslib::ocl::Context context("Xilinx", kDeviceDsaString);
-      std::cout << " Done." << std::endl;
+      std::cout << "Initializing OpenCL context..." << std::flush;
+      hlslib::ocl::Context context;
+      std::cout << " Done.\n";
 
       std::cout << "Allocating device memory..." << std::flush;
       auto device = context.MakeBuffer<Memory_t, hlslib::ocl::Access::readWrite>(
@@ -142,9 +142,9 @@ int main(int argc, char **argv) {
 
     try {
 
-      std::cout << "Creating OpenCL context..." << std::flush;
-      hlslib::ocl::Context context("Xilinx", kDeviceDsaString);
-      std::cout << " Done." << std::endl;
+      std::cout << "Initializing OpenCL context..." << std::flush;
+      hlslib::ocl::Context context;
+      std::cout << " Done.\n";
 
       std::cout << "Allocating device memory..." << std::flush;
       auto device0 =
