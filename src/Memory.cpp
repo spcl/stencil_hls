@@ -263,8 +263,7 @@ void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory0,
 // Single DIMM read
 void Read(Memory_t const *memory, hlslib::Stream<Kernel_t> &toKernel) {
   #pragma HLS INLINE
-  hls::stream<Memory_t> readBuffer("readBuffer");
-  #pragma HLS STREAM variable=readBuffer depth=kMemoryBufferDepth
+  hlslib::Stream<Memory_t> readBuffer("readBuffer", kMemoryBufferDepth);
   ReadSplit<1>(memory, readBuffer);
   Widen(readBuffer, toKernel);
 }
@@ -273,12 +272,9 @@ void Read(Memory_t const *memory, hlslib::Stream<Kernel_t> &toKernel) {
 void Read(Memory_t const *memory0, Memory_t const *memory1,
           hlslib::Stream<Kernel_t> &toKernel) {
   #pragma HLS INLINE
-  hls::stream<Memory_t> readBuffer0("readBuffer0");
-  #pragma HLS STREAM variable=readBuffer0 depth=kMemoryBufferDepth
-  hls::stream<Memory_t> readBuffer1("readBuffer1");
-  #pragma HLS STREAM variable=readBuffer1 depth=kMemoryBufferDepth
-  hls::stream<Memory_t> demuxPipe("demuxPipe");
-  #pragma HLS STREAM variable=demuxPipe depth=kPipeDepth
+  hlslib::Stream<Memory_t> readBuffer0("readBuffer0", kMemoryBufferDepth);
+  hlslib::Stream<Memory_t> readBuffer1("readBuffer1", kMemoryBufferDepth);
+  hlslib::Stream<Memory_t> demuxPipe("demuxPipe", kPipeDepth);
   ReadSplit<2>(memory0, readBuffer0);
   ReadSplit<2>(memory1, readBuffer1);
   DemuxRead(readBuffer0, readBuffer1, demuxPipe);
@@ -288,8 +284,7 @@ void Read(Memory_t const *memory0, Memory_t const *memory1,
 // Single DIMM write
 void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory) {
   #pragma HLS INLINE
-  hls::stream<Memory_t> writeBuffer("writeBuffer");
-  #pragma HLS STREAM variable=writeBuffer depth=kMemoryBufferDepth
+  hlslib::Stream<Memory_t> writeBuffer("writeBuffer", kMemoryBufferDepth);
   Narrow(fromKernel, writeBuffer);
   WriteSplit<1>(writeBuffer, memory);
 }
@@ -298,12 +293,9 @@ void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory) {
 void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory0,
            Memory_t *memory1) {
   #pragma HLS INLINE
-  hls::stream<Memory_t> writeBuffer0("writeBuffer0");
-  #pragma HLS STREAM variable=writeBuffer0 depth=kMemoryBufferDepth
-  hls::stream<Memory_t> writeBuffer1("writeBuffer1");
-  #pragma HLS STREAM variable=writeBuffer1 depth=kMemoryBufferDepth
-  hls::stream<Memory_t> muxPipe("muxPipe");
-  #pragma HLS STREAM variable=muxPipe depth=kPipeDepth
+  hlslib::Stream<Memory_t> writeBuffer0("writeBuffer0", kMemoryBufferDepth);
+  hlslib::Stream<Memory_t> writeBuffer1("writeBuffer1", kMemoryBufferDepth);
+  hlslib::Stream<Memory_t> muxPipe("muxPipe", kPipeDepth);
   Narrow(fromKernel, muxPipe);
   MuxWrite(muxPipe, writeBuffer0, writeBuffer1);
   WriteSplit<2>(writeBuffer0, memory0);

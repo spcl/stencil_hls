@@ -36,17 +36,8 @@ void Compute(hlslib::Stream<Kernel_t> &pipeIn,
 
   // The typedef seems to break the high level synthesis tool when applying
   // pragmas
-#ifndef STENCIL_SYNTHESIS 
-  hlslib::Stream<Kernel_t> northBuffer("northBuffer");
-  hlslib::Stream<Kernel_t> centerBuffer("centerBuffer");
-#else
-  hls::stream<Kernel_t> northBuffer("northBuffer");
-  #pragma HLS STREAM variable=northBuffer depth=kInputWidth
-  #pragma HLS RESOURCE variable=northBuffer core=FIFO_BRAM
-  hls::stream<Kernel_t> centerBuffer("centerBuffer");
-  #pragma HLS STREAM variable=centerBuffer depth=kInputWidth
-  #pragma HLS RESOURCE variable=centerBuffer core=FIFO_BRAM
-#endif
+  hlslib::Stream<Kernel_t> northBuffer("northBuffer", kInputWidth);
+  hlslib::Stream<Kernel_t> centerBuffer("centerBuffer", kInputWidth);
 
   int t = 0;
   int b = 0;
@@ -222,8 +213,7 @@ template <int stage>
 void UnrollCompute(hlslib::Stream<Kernel_t> &previous,
                    hlslib::Stream<Kernel_t> &last) {
   #pragma HLS INLINE
-  hls::stream<Kernel_t> next("pipe");
-  #pragma HLS STREAM variable=next depth=kPipeDepth
+  hlslib::Stream<Kernel_t> next("pipe", kPipeDepth);
   Compute<kDepth - stage>(previous, next);
   UnrollCompute<stage - 1>(next, last);
 }

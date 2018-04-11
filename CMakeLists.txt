@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(Stencil C CXX)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/hlslib/cmake)
 
 # Target platform
 set(STENCIL_PART_NAME "xcku115-flvb2104-2-e") 
@@ -48,7 +48,7 @@ mark_as_advanced(STENCIL_ENTRY_FUNCTION)
 
 # Dependencies
 find_package(SDAccel REQUIRED)
-include_directories(${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/include ${SDAccel_INCLUDE_DIRS})
+include_directories(${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/hlslib/include ${SDAccel_INCLUDE_DIRS})
 set(STENCIL_LIBS ${SDAccel_LIBRARIES})
 
 # Compilation flags
@@ -109,6 +109,7 @@ set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS}
   # Includes
   -I${CMAKE_BINARY_DIR}
   -I${CMAKE_SOURCE_DIR}/include
+  -I${CMAKE_SOURCE_DIR}/hlslib/include
   # Source
   ${CMAKE_SOURCE_DIR}/src/Stencil.cpp
   ${CMAKE_SOURCE_DIR}/src/Memory.cpp

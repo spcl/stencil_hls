@@ -50,8 +50,8 @@ int main(int argc, char **argv) {
       }
 
       std::cout << "Creating kernel..." << std::flush;
-      auto kernel =
-          context.MakeKernel(kKernelString, "Jacobi", device, device);
+      auto program = context.MakeProgram(kKernelString);
+      auto kernel = program.MakeKernel(kKernelString, "Jacobi", device, device);
       std::cout << " Done." << std::endl;
 
       const auto readSize =
@@ -167,8 +167,9 @@ int main(int argc, char **argv) {
       }
 
       std::cout << "Creating kernel..." << std::flush;
-      auto kernel = context.MakeKernel(
-          kKernelString, "JacobiTwoDimms", device0, device0, device1, device1);
+      auto program = context.MakeProgram(kKernelString);
+      auto kernel = program.MakeKernel("JacobiTwoDimms", device0, device0,
+                                       device1, device1);
       std::cout << " Done." << std::endl;
 
       const auto readSize =
