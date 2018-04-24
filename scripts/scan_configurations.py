@@ -136,15 +136,15 @@ def run_build(conf, clean=True, hardware=True):
   if run_process("make".split(), confDir) != 0:
     raise Exception(confStr + ": Software build failed.")
   if hardware:
-    timeStart = datetime.datetime.now()
-    print_status(conf, "running HLS...")
-    if run_process("make synthesis".split(), confDir) != 0:
-      raise Exception(confStr + ": HLS failed.")
-    print_status(conf, "finished HLS after {}.".format(
-        time_only(datetime.datetime.now() - timeStart)))
+    # timeStart = datetime.datetime.now()
+    # print_status(conf, "running HLS...")
+    # if run_process("make synthesis".split(), confDir) != 0:
+    #   raise Exception(confStr + ": HLS failed.")
+    # print_status(conf, "finished HLS after {}.".format(
+    #     time_only(datetime.datetime.now() - timeStart)))
     timeStart = datetime.datetime.now()
     print_status(conf, "starting kernel build...")
-    if run_process("make kernel".split(), confDir) != 0:
+    if run_process("make build_kernel".split(), confDir) != 0:
       try:
         with open(os.path.join(confDir, "log.out")) as logFile:
           m = re.search("auto frequency scaling failed", logFile.read())
