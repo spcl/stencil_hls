@@ -22,7 +22,7 @@ set(STENCIL_ROWS 8192 CACHE STRING "Number of rows.")
 set(STENCIL_COLS 8192 CACHE STRING "Number of columns.")
 set(STENCIL_TARGET_CLOCK 300 CACHE STRING "Target clock speed.")
 set(STENCIL_TIMING_UNCERTAINTY 1.08 CACHE STRING "Uncertainty on the timing allowed in HLS.")
-set(STENCIL_KEEP_INTERMEDIATE OFF CACHE STRING "Keep intermediate SDAccel files")
+set(STENCIL_KEEP_INTERMEDIATE ON CACHE STRING "Keep intermediate SDAccel files")
 set(STENCIL_ADD_CORE OFF CACHE STRING "")                                
 set(STENCIL_MULT_CORE OFF CACHE STRING "")  
 
@@ -105,7 +105,6 @@ add_executable(ExecuteKernel.exe src/ExecuteKernel.cpp)
 target_link_libraries(ExecuteKernel.exe ${STENCIL_LIBS})
 set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS} 
   -t hw
-  -s
   # Includes
   -I${CMAKE_BINARY_DIR}
   -I${CMAKE_SOURCE_DIR}/include
