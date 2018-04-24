@@ -9,7 +9,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/hlslib/cmake)
 set(STENCIL_PART_NAME "xcku115-flvb2104-2-e") 
 set(STENCIL_DSA_STRING "xilinx:xil-accel-rd-ku115:4ddr-xpr:4.0")
 set(STENCIL_DIMMS 2 CACHE STRING "Number of DDR DIMMs to target")
-set(STENCIL_SINGLE_SLR ON CACHE STRING "Only place and route on a single SLR of the KU115")
+set(STENCIL_SINGLE_SLR OFF CACHE STRING "Only place and route on a single SLR of the KU115")
 
 # User configuration
 set(STENCIL_DATA_TYPE "float" CACHE STRING "Data type.")
