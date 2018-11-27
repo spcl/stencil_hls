@@ -1,7 +1,7 @@
 open_project Jacobi 
 open_solution ${STENCIL_PART_NAME}  
 set_part ${STENCIL_PART_NAME} 
-add_files -cflags "-DSTENCIL_SYNTHESIS -DHLSLIB_SYNTHESIS ${CMAKE_CXX_FLAGS} -I${CMAKE_SOURCE_DIR}/include -I${CMAKE_SOURCE_DIR}/hlslib/include -I${CMAKE_BINARY_DIR}" "${CMAKE_SOURCE_DIR}/src/Stencil.cpp ${CMAKE_SOURCE_DIR}/src/Memory.cpp" 
+add_files -cflags "${STENCIL_SYNTHESIS_FLAGS} -I${CMAKE_SOURCE_DIR}/include -I${CMAKE_SOURCE_DIR}/hlslib/include -I${CMAKE_BINARY_DIR}" "${CMAKE_SOURCE_DIR}/src/Stencil.cpp ${CMAKE_SOURCE_DIR}/src/Memory.cpp" 
 set_top ${STENCIL_ENTRY_FUNCTION} 
 create_clock -period ${STENCIL_TARGET_CLOCK}MHz -name default
 set_clock_uncertainty ${STENCIL_TIMING_UNCERTAINTY}
