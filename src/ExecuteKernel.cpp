@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  bool verify = true;
+  bool verify = false;
   if (argc == 2) {
     if (std::string(argv[1]) == "on") {
       verify = true;
@@ -36,6 +36,11 @@ int main(int argc, char **argv) {
       hlslib::ocl::Context context;
       std::cout << " Done.\n";
 
+      std::cout << "Creating program..." << std::flush;
+      auto program =
+          context.MakeProgram(kKernelString + std::string(".xclbin"));
+      std::cout << " Done." << std::endl;
+
       std::cout << "Allocating device memory..." << std::flush;
       auto device = context.MakeBuffer<Memory_t, hlslib::ocl::Access::readWrite>(
           hlslib::ocl::MemoryBank::bank0, 2 * kTotalElementsMemory);
@@ -50,7 +55,6 @@ int main(int argc, char **argv) {
       }
 
       std::cout << "Creating kernel..." << std::flush;
-      auto program = context.MakeProgram(kKernelString);
       auto kernel = program.MakeKernel(Jacobi, "Jacobi", device, device);
       std::cout << " Done." << std::endl;
 
@@ -146,6 +150,11 @@ int main(int argc, char **argv) {
       hlslib::ocl::Context context;
       std::cout << " Done.\n";
 
+      std::cout << "Creating program..." << std::flush;
+      auto program =
+          context.MakeProgram(kKernelString + std::string(".xclbin"));
+      std::cout << " Done.\n";
+
       std::cout << "Allocating device memory..." << std::flush;
       auto device0 =
           context.MakeBuffer<Memory_t, hlslib::ocl::Access::readWrite>(
@@ -167,7 +176,6 @@ int main(int argc, char **argv) {
       }
 
       std::cout << "Creating kernel..." << std::flush;
-      auto program = context.MakeProgram(kKernelString);
       auto kernel = program.MakeKernel(JacobiTwoDimms, "JacobiTwoDimms",
                                        device0, device0, device1, device1);
       std::cout << " Done." << std::endl;

@@ -77,7 +77,7 @@ set(STENCIL_SRC
 
 # Configure files 
 set(STENCIL_KERNEL_STRING
-  "jacobi_${STENCIL_TARGET}_${STENCIL_DATA_TYPE}_c${STENCIL_TARGET_CLOCK}_w${STENCIL_KERNEL_WIDTH}_d${STENCIL_DEPTH}_${STENCIL_ROWS}x${STENCIL_COLS}_b${STENCIL_BLOCKS}_t${STENCIL_TIME}.xclbin")
+  "jacobi_${STENCIL_DATA_TYPE}_c${STENCIL_TARGET_CLOCK}_w${STENCIL_KERNEL_WIDTH}_d${STENCIL_DEPTH}_${STENCIL_ROWS}x${STENCIL_COLS}_b${STENCIL_BLOCKS}_t${STENCIL_TIME}")
 configure_file(include/Stencil.h.in Stencil.h)
 configure_file(scripts/Synthesis.tcl.in Synthesis.tcl)
 
@@ -108,9 +108,7 @@ target_link_libraries(Stats ${STENCIL_LIBS})
 # SDAccel
 add_executable(ExecuteKernel.exe src/ExecuteKernel.cpp)
 target_link_libraries(ExecuteKernel.exe ${STENCIL_LIBS})
-message(${STENCIL_SYNTHESIS_FLAGS})
 string(REPLACE " " ";" STENCIL_SYNTHESIS_FLAGS ${STENCIL_SYNTHESIS_FLAGS})
-message(${STENCIL_SYNTHESIS_FLAGS})
 set(STENCIL_XOCC_FLAGS ${STENCIL_XOCC_FLAGS} 
   # Includes
   -I${CMAKE_BINARY_DIR}
@@ -149,14 +147,15 @@ if(((${SDAccel_MAJOR_VERSION} LESS 2018) AND (${SDAccel_MINOR_VERSION} LESS 3)) 
   add_custom_target(build_kernel
     COMMAND XILINX_PATH=${CMAKE_BINARY_DIR} ${SDAccel_XOCC} -t hw
     ${STENCIL_XOCC_FLAGS} ${STENCIL_XOCC_COMPILE_FLAGS} ${STENCIL_XOCC_LINK_FLAGS}
-    ${STENCIL_KERNEL_SRC} -o Jacobi.xclbin) 
+    ${STENCIL_KERNEL_SRC} -o ${STENCIL_KERNEL_STRING}.xclbin) 
 else()
   add_custom_target(compile_hardware
     COMMAND XILINX_PATH=${CMAKE_BINARY_DIR} ${SDAccel_XOCC} -c -t hw
     ${STENCIL_XOCC_FLAGS} ${STENCIL_XOCC_LINK_FLAGS}
-    ${STENCIL_KERNEL_SRC} -o Jacobi.xo) 
+    ${STENCIL_KERNEL_SRC} -o ${STENCIL_KERNEL_STRING}.xo) 
   add_custom_target(link_hardware
     COMMAND XILINX_PATH=${CMAKE_BINARY_DIR} ${SDAccel_XOCC} -l -t hw
     ${STENCIL_XOCC_FLAGS} ${STENCIL_XOCC_LINK_FLAGS}
-    Jacobi.xo -o Jacobi.xclbin) 
+    ${STENCIL_KERNEL_STRING}.xo -o ${STENCIL_KERNEL_STRING}.xclbin) 
 endif()
+message(STATUS ${STENCIL_KERNEL_STRING}.xclbin)
