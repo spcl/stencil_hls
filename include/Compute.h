@@ -1,12 +1,11 @@
 /// @author    Johannes de Fine Licht (definelicht@inf.ethz.ch)
-/// @date      March 2017 
 /// @copyright This software is copyrighted under the BSD 3-Clause License. 
 
 #pragma once
 
 #include "Stencil.h"
-#include "hlslib/Stream.h"
-#include "hlslib/Utility.h"
+#include "hlslib/xilinx/Stream.h"
+#include "hlslib/xilinx/Utility.h"
 #ifndef STENCIL_SYNTHESIS
 #include <thread>
 #endif

@@ -1,5 +1,4 @@
 /// @author    Johannes de Fine Licht (definelicht@inf.ethz.ch)
-/// @date      March 2017 
 /// @copyright This software is copyrighted under the BSD 3-Clause License. 
 
 #include "Memory.h"
