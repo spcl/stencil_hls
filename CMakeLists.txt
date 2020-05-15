@@ -5,8 +5,8 @@ project(Stencil C CXX)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/hlslib/cmake)
 
 # Target platform
-set(STENCIL_PART_NAME "xcvu9p-flgb2104-2-i" CACHE STRING "HLS part name") 
-set(STENCIL_DSA_STRING "xilinx_vcu1525_dynamic_5_1" CACHE STRING "SDx DSA/platform name")
+set(STENCIL_PART_NAME "xcu250-figd2104-2L-e" CACHE STRING "HLS part name") 
+set(STENCIL_DSA_STRING "xilinx_u250_xdma_201830_2" CACHE STRING "SDx DSA/platform name")
 set(STENCIL_DIMMS 2 CACHE STRING "Number of DDR DIMMs to target")
 
 # User configuration
