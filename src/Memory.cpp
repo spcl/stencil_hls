@@ -33,7 +33,7 @@ ReadTime:
           const auto read = input[index];
           if ((b > 0 || c < kBlockWidthMemory + kHaloMemory) &&
               (b < kBlocks - 1 || c >= kHaloMemory)) {
-            hlslib::WriteBlocking(buffer, read, kMemoryBufferDepth);
+            buffer.Push(read);
           }
         }
       }
@@ -55,9 +55,9 @@ DemuxTime:
       #pragma HLS LOOP_FLATTEN
       #pragma HLS PIPELINE
       if (r % 2 == 0) {
-        hlslib::WriteBlocking(pipe, hlslib::ReadBlocking(buffer0), kPipeDepth);
+        pipe.Push(buffer0.Pop());
       } else {
-        hlslib::WriteBlocking(pipe, hlslib::ReadBlocking(buffer1), kPipeDepth);
+        pipe.Push(buffer1.Pop());
       }
       const bool lastCol = ((b == 0 || b == kBlocks - 1) &&
                             c == kBlockWidthMemory + kHaloMemory - 1) ||
@@ -99,11 +99,11 @@ WidenTime:
       #pragma HLS PIPELINE
 
       if (readNext) {
-        memoryBlock = hlslib::ReadBlocking(in);
+        memoryBlock = in.Pop();
       }
 
       const Kernel_t elem = memoryBlock[memIndex];
-      hlslib::WriteBlocking(out, elem, kPipeDepth);
+      out.Push(elem);
 
       const bool lastCol = ((b == 0 || b == kBlocks - 1) &&
                             c == kBlockWidthKernel + kHaloKernel - 1) ||
@@ -152,7 +152,7 @@ WriteTime:
           #pragma HLS LOOP_FLATTEN
           #pragma HLS PIPELINE
           const auto offset = (t % 2 == 0) ? kTotalElementsSplit : 0;
-          const auto read = hlslib::ReadBlocking(buffer);
+          const auto read = buffer.Pop();
           const auto index = (offset + r * kBlockWidthMemory * kBlocks +
                               b * kBlockWidthMemory + c) %
                              (2 * kTotalElementsSplit);
@@ -177,11 +177,11 @@ MuxTime:
         for (int c = 0; c < kBlockWidthMemory; ++c) {
           #pragma HLS LOOP_FLATTEN
           #pragma HLS PIPELINE
-          const auto read = hlslib::ReadBlocking(pipe);
+          const auto read = pipe.Pop();
           if (r % 2 == 0) {
-            hlslib::WriteBlocking(buffer0, read, kMemoryBufferDepth);
+            buffer0.Push(read);
           } else {
-            hlslib::WriteBlocking(buffer1, read, kMemoryBufferDepth);
+            buffer1.Push(read);
           }
         }
       }
@@ -202,11 +202,11 @@ NarrowTime:
         for (int c = 0; c < kBlockWidthKernel; ++c) {
           #pragma HLS LOOP_FLATTEN
           #pragma HLS PIPELINE
-          const auto read = hlslib::ReadBlocking(in);
+          const auto read = in.Pop();
           const auto memIndex = c % kKernelPerMemory;
           memoryBlock[memIndex] = read;
           if (memIndex == kKernelPerMemory - 1) {
-            hlslib::WriteBlocking(out, memoryBlock, kMemoryBufferDepth);
+            out.Push(memoryBlock);
           }
         }
       }
@@ -266,7 +266,7 @@ void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory0,
 // Single DIMM read
 void Read(Memory_t const *memory, hlslib::Stream<Kernel_t> &toKernel) {
   #pragma HLS INLINE
-  hlslib::Stream<Memory_t> readBuffer("readBuffer", kMemoryBufferDepth);
+  hlslib::Stream<Memory_t, kMemoryBufferDepth> readBuffer("readBuffer");
   ReadSplit<1>(memory, readBuffer);
   Widen(readBuffer, toKernel);
 }
@@ -275,9 +275,9 @@ void Read(Memory_t const *memory, hlslib::Stream<Kernel_t> &toKernel) {
 void Read(Memory_t const *memory0, Memory_t const *memory1,
           hlslib::Stream<Kernel_t> &toKernel) {
   #pragma HLS INLINE
-  hlslib::Stream<Memory_t> readBuffer0("readBuffer0", kMemoryBufferDepth);
-  hlslib::Stream<Memory_t> readBuffer1("readBuffer1", kMemoryBufferDepth);
-  hlslib::Stream<Memory_t> demuxPipe("demuxPipe", kPipeDepth);
+  hlslib::Stream<Memory_t, kMemoryBufferDepth> readBuffer0("readBuffer0");
+  hlslib::Stream<Memory_t, kMemoryBufferDepth> readBuffer1("readBuffer1");
+  hlslib::Stream<Memory_t, kPipeDepth> demuxPipe("demuxPipe");
   ReadSplit<2>(memory0, readBuffer0);
   ReadSplit<2>(memory1, readBuffer1);
   DemuxRead(readBuffer0, readBuffer1, demuxPipe);
@@ -287,7 +287,7 @@ void Read(Memory_t const *memory0, Memory_t const *memory1,
 // Single DIMM write
 void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory) {
   #pragma HLS INLINE
-  hlslib::Stream<Memory_t> writeBuffer("writeBuffer", kMemoryBufferDepth);
+  hlslib::Stream<Memory_t, kMemoryBufferDepth> writeBuffer("writeBuffer");
   Narrow(fromKernel, writeBuffer);
   WriteSplit<1>(writeBuffer, memory);
 }
@@ -296,9 +296,9 @@ void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory) {
 void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory0,
            Memory_t *memory1) {
   #pragma HLS INLINE
-  hlslib::Stream<Memory_t> writeBuffer0("writeBuffer0", kMemoryBufferDepth);
-  hlslib::Stream<Memory_t> writeBuffer1("writeBuffer1", kMemoryBufferDepth);
-  hlslib::Stream<Memory_t> muxPipe("muxPipe", kPipeDepth);
+  hlslib::Stream<Memory_t, kMemoryBufferDepth> writeBuffer0("writeBuffer0");
+  hlslib::Stream<Memory_t, kMemoryBufferDepth> writeBuffer1("writeBuffer1");
+  hlslib::Stream<Memory_t, kPipeDepth> muxPipe("muxPipe");
   Narrow(fromKernel, muxPipe);
   MuxWrite(muxPipe, writeBuffer0, writeBuffer1);
   WriteSplit<2>(writeBuffer0, memory0);

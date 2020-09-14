@@ -36,8 +36,8 @@ void Compute(hlslib::Stream<Kernel_t> &pipeIn,
 
   // The typedef seems to break the high level synthesis tool when applying
   // pragmas
-  hlslib::Stream<Kernel_t> northBuffer("northBuffer", kInputWidth);
-  hlslib::Stream<Kernel_t> centerBuffer("centerBuffer", kInputWidth);
+  hlslib::Stream<Kernel_t, kInputWidth> northBuffer("northBuffer");
+  hlslib::Stream<Kernel_t, kInputWidth> centerBuffer("centerBuffer");
 
   int t = 0;
   int b = 0;
@@ -68,11 +68,11 @@ ComputeFlat:
     if (isSaturating) {
       Kernel_t read;
       if (i >= kInnerBegin - 1) { // Shift right by one
-        read = hlslib::ReadBlocking(pipeIn);
+        read = pipeIn.Pop();
       } else {
         read = Kernel_t(kBoundary);
       }
-      hlslib::WriteOptimistic(centerBuffer, read, kInputWidth);
+      centerBuffer.WriteOptimistic(read, kInputWidth);
 #ifdef STENCIL_KERNEL_DEBUG
       debugStream << "saturating " << read << "\n";
       if (debugCond) {
@@ -95,14 +95,14 @@ ComputeFlat:
 
         } else {
 
-          read = hlslib::ReadBlocking(pipeIn);
+          read = pipeIn.Pop();
 
         }
       }
 
       // Collect vertical values
       const auto north =
-          (r > 0) ? hlslib::ReadOptimistic(northBuffer) : Kernel_t(kBoundary);
+          (r > 0) ? northBuffer.ReadOptimistic() : Kernel_t(kBoundary);
       const auto south = (r < kRows - 1) ? read : Kernel_t(kBoundary);
 
       // Use center value shifted forward to populate bulk of west and east
@@ -112,7 +112,7 @@ ComputeFlat:
       shiftCenter.ShiftTo<1, 0, kKernelWidth - 1>(east);
 
       // Read the next center value to collect the last element of east
-      const auto nextCenter = hlslib::ReadOptimistic(centerBuffer);
+      const auto nextCenter = centerBuffer.ReadOptimistic();
       east[kKernelWidth - 1] = nextCenter[0];
 
       // We shifted the last element of west forward from last iteration
@@ -120,9 +120,9 @@ ComputeFlat:
 
       // Now update the line buffers
       if (!isDraining) {
-        hlslib::WriteOptimistic(centerBuffer, read, kInputWidth);
+        centerBuffer.WriteOptimistic(read, kInputWidth);
         if (r < kRows - 1) {
-          hlslib::WriteOptimistic(northBuffer, shiftCenter, kInputWidth);
+          northBuffer.WriteOptimistic(shiftCenter);
         }
       }
 
@@ -164,7 +164,7 @@ ComputeFlat:
         } else {
           write = Kernel_t(kBoundary);
         }
-        hlslib::WriteBlocking(pipeOut, write, kPipeDepth);
+        pipeOut.Push(write);
 #ifdef STENCIL_KERNEL_DEBUG
         if (debugCond) {
           debugStream << " -> " << write << "\n"; 
@@ -213,7 +213,7 @@ template <int stage>
 void UnrollCompute(hlslib::Stream<Kernel_t> &previous,
                    hlslib::Stream<Kernel_t> &last) {
   #pragma HLS INLINE
-  hlslib::Stream<Kernel_t> next("pipe", kPipeDepth);
+  hlslib::Stream<Kernel_t, kPipeDepth> next("pipe");
   Compute<kDepth - stage>(previous, next);
   UnrollCompute<stage - 1>(next, last);
 }

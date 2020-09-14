@@ -22,8 +22,8 @@ void Jacobi(Memory_t const *in, Memory_t *out) {
     t.join();
   }
 #else
-  hlslib::Stream<Kernel_t> toKernel("toKernel", kPipeDepth);
-  hlslib::Stream<Kernel_t> fromKernel("fromKernel", kPipeDepth);
+  hlslib::Stream<Kernel_t, kPipeDepth> toKernel("toKernel");
+  hlslib::Stream<Kernel_t, kPipeDepth> fromKernel("fromKernel");
   Read(in, toKernel);
   UnrollCompute<kDepth>(toKernel, fromKernel);
   Write(fromKernel, out);
@@ -53,8 +53,8 @@ void JacobiTwoDimms(Memory_t const *in0, Memory_t *out0,
     t.join();
   }
 #else
-  hlslib::Stream<Kernel_t> toKernel("toKernel", kPipeDepth);
-  hlslib::Stream<Kernel_t> fromKernel("fromKernel", kPipeDepth);
+  hlslib::Stream<Kernel_t, kPipeDepth> toKernel("toKernel");
+  hlslib::Stream<Kernel_t, kPipeDepth> fromKernel("fromKernel");
   Read(in0, in1, toKernel);
   UnrollCompute<kDepth>(toKernel, fromKernel);
   Write(fromKernel, out0, out1);

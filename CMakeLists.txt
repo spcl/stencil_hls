@@ -76,7 +76,7 @@ set(STENCIL_SRC
 
 # Configure files 
 set(STENCIL_KERNEL_STRING
-  "jacobi_${STENCIL_DATA_TYPE}_c${STENCIL_TARGET_CLOCK}_w${STENCIL_KERNEL_WIDTH}_d${STENCIL_DEPTH}_${STENCIL_ROWS}x${STENCIL_COLS}_b${STENCIL_BLOCKS}_t${STENCIL_TIME}")
+    "jacobi_${STENCIL_DATA_TYPE}_c${STENCIL_TARGET_CLOCK}_w${STENCIL_KERNEL_WIDTH}_d${STENCIL_DEPTH}_${STENCIL_ROWS}x${STENCIL_COLS}_b${STENCIL_BLOCKS}_t${STENCIL_TIME}")
 configure_file(include/Stencil.h.in Stencil.h)
 configure_file(scripts/Synthesis.tcl.in Synthesis.tcl)
 
