@@ -7,11 +7,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/hlslib/cmake)
 # Target platform
 set(STENCIL_PART_NAME "xcu250-figd2104-2L-e" CACHE STRING "HLS part name") 
 set(STENCIL_DSA_STRING "xilinx_u250_xdma_201830_2" CACHE STRING "SDx DSA/platform name")
-set(STENCIL_DIMMS 2 CACHE STRING "Number of DDR DIMMs to target")
 
 # User configuration
 set(STENCIL_DATA_TYPE "float" CACHE STRING "Data type.")
-set(STENCIL_TIME 32 CACHE STRING "Number of timesteps.")
 set(STENCIL_MEMORY_WIDTH 16 CACHE STRING "Width of memory port.")
 set(STENCIL_KERNEL_WIDTH 4 CACHE STRING "Width of kernel data path.")
 set(STENCIL_DEPTH 8 CACHE STRING "Depth of pipeline (determines halo size.)")
@@ -26,23 +24,7 @@ set(STENCIL_MULT_CORE OFF CACHE STRING "")
 set(STENCIL_ENABLE_PROFILING OFF CACHE STRING "Enable SDx profiling")
 
 # Internal
-if(STENCIL_DIMMS AND (NOT (STENCIL_DIMMS EQUAL STENCIL_DIMMS_DEFAULT)))
-  if((NOT STENCIL_DIMMS EQUAL 1) AND (NOT STENCIL_DIMMS EQUAL 2))
-    message(FATAL_ERROR "Unsupported number of DIMMs: ${STENCIL_DIMMS} (must be 1 or 2).")
-  endif()
-  if(STENCIL_DIMMS GREATER STENCIL_DIMMS_MAX)
-    message(FATAL_ERROR "Unsupported number of DIMMS for target ${STENCIL_TARGET}: ${STENCIL_DIMMS} (maximum is ${STENCIL_DIMMS_MAX})")
-  endif()
-  set(STENCIL_DIMMS_INTERNAL ${STENCIL_DIMMS})
-else()
-  set(STENCIL_DIMMS_INTERNAL ${STENCIL_DIMMS_DEFAULT})
-endif()
-if(STENCIL_DIMMS_INTERNAL EQUAL 1)
-  set(STENCIL_ENTRY_FUNCTION "Jacobi")
-elseif(STENCIL_DIMMS_INTERNAL EQUAL 2)
-  set(STENCIL_ENTRY_FUNCTION "JacobiTwoDimms")
-endif()
-mark_as_advanced(STENCIL_DIMMS_INTERNAL)
+set(STENCIL_ENTRY_FUNCTION "StencilKernel")
 mark_as_advanced(STENCIL_ENTRY_FUNCTION)
 
 # Dependencies
@@ -73,15 +55,14 @@ endif()
 
 # Source
 set(STENCIL_KERNEL_SRC
-    ${CMAKE_SOURCE_DIR}/src/Stencil.cpp
-    ${CMAKE_SOURCE_DIR}/src/Memory.cpp)
+    ${CMAKE_SOURCE_DIR}/kernel/Stencil.cpp
+    ${CMAKE_SOURCE_DIR}/kernel/Memory.cpp)
 set(STENCIL_SRC
     ${STENCIL_KERNEL_SRC}
     ${CMAKE_SOURCE_DIR}/src/Reference.cpp)
 
 # Configure files 
-set(STENCIL_KERNEL_STRING
-    "jacobi_${STENCIL_DATA_TYPE}_c${STENCIL_TARGET_CLOCK}_w${STENCIL_KERNEL_WIDTH}_d${STENCIL_DEPTH}_${STENCIL_ROWS}x${STENCIL_COLS}_b${STENCIL_BLOCKS}_t${STENCIL_TIME}")
+set(STENCIL_KERNEL_STRING "Stencil")
 configure_file(include/Stencil.h.in Stencil.h)
 configure_file(scripts/Synthesis.tcl.in Synthesis.tcl)
 
@@ -110,7 +91,7 @@ add_executable(Stats src/Stats.cpp)
 target_link_libraries(Stats ${STENCIL_LIBS})
 
 # Vitis
-add_executable(ExecuteKernel.exe src/ExecuteKernel.cpp)
+add_executable(ExecuteKernel.exe host/ExecuteKernel.cpp)
 target_link_libraries(ExecuteKernel.exe ${STENCIL_LIBS})
 string(REPLACE " " ";" STENCIL_SYNTHESIS_FLAGS ${STENCIL_SYNTHESIS_FLAGS})
 set(STENCIL_VPP_FLAGS ${STENCIL_VPP_FLAGS} 
@@ -126,23 +107,15 @@ set(STENCIL_VPP_FLAGS ${STENCIL_VPP_FLAGS}
 if(STENCIL_KEEP_INTERMEDIATE)
   set(STENCIL_VPP_FLAGS ${STENCIL_VPP_FLAGS} -s)
 endif()
-if (STENCIL_DIMMS_INTERNAL EQUAL 2)
-  if(${Vitis_MAJOR_VERSION} LESS 2019)
-    set(STENCIL_VPP_FLAGS ${STENCIL_VPP_FLAGS}
-      --xp misc:map_connect=add.kernel.${STENCIL_ENTRY_FUNCTION}_1.M_AXI_GMEM0.core.OCL_REGION_0.M00_AXI
-      --xp misc:map_connect=add.kernel.${STENCIL_ENTRY_FUNCTION}_1.M_AXI_GMEM1.core.OCL_REGION_0.M01_AXI
-      --max_memory_ports all)
-  else()
-    set(STENCIL_VPP_FLAGS ${STENCIL_VPP_FLAGS}
-      --sp ${STENCIL_ENTRY_FUNCTION}_1.m_axi_gmem0:bank0
-      --sp ${STENCIL_ENTRY_FUNCTION}_1.m_axi_gmem1:bank1)
-  endif()
-endif()
-if(STENCIL_ENABLE_PROFILING)
-  set(STENCIL_VPP_COMMAND ${STENCIL_VPP_COMMAND}
-    --profile_kernel "data:all:all:all"
-    --profile_kernel "stall:all:all"
-    --profile_kernel "exec:all:all")
+if(${Vitis_MAJOR_VERSION} LESS 2019)
+  set(STENCIL_VPP_FLAGS ${STENCIL_VPP_FLAGS}
+    --xp misc:map_connect=add.kernel.${STENCIL_ENTRY_FUNCTION}_1.M_AXI_GMEM0.core.OCL_REGION_0.M00_AXI
+    --xp misc:map_connect=add.kernel.${STENCIL_ENTRY_FUNCTION}_1.M_AXI_GMEM1.core.OCL_REGION_0.M01_AXI
+    --max_memory_ports all)
+else()
+  set(STENCIL_VPP_FLAGS ${STENCIL_VPP_FLAGS}
+    --sp ${STENCIL_ENTRY_FUNCTION}_1.m_axi_gmem0:bank0
+    --sp ${STENCIL_ENTRY_FUNCTION}_1.m_axi_gmem1:bank1)
 endif()
 
 # Kernel build

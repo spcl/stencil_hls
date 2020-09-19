@@ -1,46 +1,28 @@
 /// @author    Johannes de Fine Licht (definelicht@inf.ethz.ch)
-/// @copyright This software is copyrighted under the BSD 3-Clause License. 
+/// @copyright This software is copyrighted under the BSD 3-Clause License.
 
 #pragma once
 
 #include "Stencil.h"
 #include "hlslib/xilinx/Stream.h"
 
-#ifdef STENCIL_SYNTHESIS
+static constexpr int kDimms = 2;
 
-// Single DIMM
-void Read(Memory_t const *memory, hlslib::Stream<Kernel_t> &toKernel);
+void ReadSplit(Memory_t const *input, hlslib::Stream<Memory_t> &buffer,
+               const int timesteps_folded);
 
-// Dual DIMM
-void Read(Memory_t const *memory0, Memory_t const *memory1,
-          hlslib::Stream<Kernel_t> &toKernel);
+void DemuxRead(hlslib::Stream<Memory_t> &buffer0,
+               hlslib::Stream<Memory_t> &buffer1,
+               hlslib::Stream<Memory_t> &pipe, const int timesteps_folded);
 
-// Single DIMM
-void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory);
+void Widen(hlslib::Stream<Memory_t> &in, hlslib::Stream<Kernel_t> &out,
+           const int timesteps_folded);
 
-// Dual DIMM
-void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory0,
-           Memory_t *memory1);
+void Narrow(hlslib::Stream<Kernel_t> &in, hlslib::Stream<Memory_t> &out,
+            const int timesteps_folded);
 
-#else
+void MuxWrite(hlslib::Stream<Memory_t> &pipe, hlslib::Stream<Memory_t> &buffer0,
+              hlslib::Stream<Memory_t> &buffer1, const int timesteps_folded);
 
-#include <thread>
-
-// Single DIMM
-void Read(Memory_t const *memory, hlslib::Stream<Kernel_t> &toKernel,
-          std::vector<std::thread> &threads);
-
-// Dual DIMM
-void Read(Memory_t const *memory0, Memory_t const *memory1,
-          hlslib::Stream<Kernel_t> &toKernel,
-          std::vector<std::thread> &threads);
-
-// Single DIMM
-void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory,
-           std::vector<std::thread> &threads);
-
-// Dual DIMM
-void Write(hlslib::Stream<Kernel_t> &fromKernel, Memory_t *memory0,
-           Memory_t *memory1, std::vector<std::thread> &threads);
-
-#endif
+void WriteSplit(hlslib::Stream<Memory_t> &buffer, Memory_t *output,
+                const int timesteps_folded);

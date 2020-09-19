@@ -1,16 +1,16 @@
 /// @author    Johannes de Fine Licht (definelicht@inf.ethz.ch)
-/// @copyright This software is copyrighted under the BSD 3-Clause License. 
+/// @copyright This software is copyrighted under the BSD 3-Clause License.
 
-#include "Stencil.h"
-#include "Reference.h"
-#include <algorithm> // std::copy
-#include <cmath>     // std::fabs
+#include <algorithm>  // std::copy
+#include <cmath>      // std::fabs
 #include <iostream>
 #include <vector>
+#include "Reference.h"
+#include "Stencil.h"
 
 bool Verify(std::vector<Data_t> const &reference,
-            std::vector<Memory_t> const &test) {
-  const int offset = (kTimeFolded % 2 == 0) ? 0 : kTotalElementsMemory;
+            std::vector<Memory_t> const &test, const int timesteps_folded) {
+  const int offset = (timesteps_folded % 2 == 0) ? 0 : kTotalElementsMemory;
   // int correct = 0;
   // int mismatches = 0;
   for (int r = 0; r < kRows; ++r) {
@@ -46,15 +46,24 @@ bool Verify(std::vector<Data_t> const &reference,
   return true;
 }
 
-int main() {
+int main(int argc, char **argv) {
+  int timesteps = 2 * kDepth;
+  if (argc > 1) {
+    timesteps = std::stoi(argv[1]);
+    if (timesteps % kDepth != 0) {
+      std::cerr << "Number of timesteps (" << timesteps
+                << ") must be divisible by depth (" << kDepth << ")\n";
+      return 2;
+    }
+  }
+  const auto timesteps_folded = timesteps / kDepth;
 
   std::cout << "Running reference implementation..." << std::flush;
-  const auto reference = Reference(std::vector<Data_t>(kRows * kCols, 0));
+  const auto reference =
+      Reference(std::vector<Data_t>(kRows * kCols, 0), timesteps);
   std::cout << " Done." << std::endl;
 
   std::cout << "Initializing memory..." << std::flush;
-  std::vector<Memory_t> memory(2 * kTotalElementsMemory,
-                               Kernel_t(Data_t(static_cast<Data_t>(0))));
   std::vector<Memory_t> memorySplit(2 * kTotalElementsMemory,
                                     Kernel_t(Data_t(static_cast<Data_t>(0))));
   std::vector<Memory_t> memorySplit0(kTotalElementsMemory,
@@ -63,39 +72,27 @@ int main() {
                                      Kernel_t(Data_t(static_cast<Data_t>(0))));
   std::cout << " Done." << std::endl;
 
-  std::cout << "Running single memory implementation..." << std::flush;
-  Jacobi(memory.data(), memory.data());
-  std::cout << " Done." << std::endl;
-
-  std::cout << "Running dual memory implementation..." << std::flush;
-  JacobiTwoDimms(memorySplit0.data(), memorySplit0.data(), memorySplit1.data(),
-                 memorySplit1.data());
+  std::cout << "Running simulation..." << std::flush;
+  StencilKernel(memorySplit0.data(), memorySplit0.data(), memorySplit1.data(),
+                memorySplit1.data(), timesteps_folded);
   std::cout << " Done." << std::endl;
 
   std::cout << "Reassembling memory..." << std::flush;
-  for (int rIn = 0, rOut = 0; rOut < kRows; ++rIn, rOut += 2) {
-    static constexpr auto kMemoryCols = kCols / kMemoryWidth;
-    const auto iStart = rIn * kMemoryCols;
-    std::copy(memorySplit0.begin() + iStart,
-              memorySplit0.begin() + iStart + kMemoryCols,
-              memorySplit.begin() + rOut * kMemoryCols);
-    std::copy(memorySplit1.begin() + iStart,
-              memorySplit1.begin() + iStart + kMemoryCols,
-              memorySplit.begin() + (rOut + 1) * kMemoryCols);
+  for (int r = 0; r < kRows; ++r) {
+    for (int c = 0; c < kCols / kMemoryWidth; ++c) {
+      constexpr auto kMemoryCols = kCols / kMemoryWidth;
+      memorySplit[2 * r * kMemoryCols + c] = memorySplit0[r * kMemoryCols + c];
+      memorySplit[(2 * r + 1) * kMemoryCols + c] =
+          memorySplit1[r * kMemoryCols + c];
+    }
   }
   std::cout << " Done." << std::endl;
 
-  std::cout << "Verifying single memory..." << std::flush;
-  if (!Verify(reference, memory)) {
+  std::cout << "Verifying result..." << std::flush;
+  if (!Verify(reference, memorySplit, timesteps_folded)) {
     return 1;
   }
   std::cout << " Done." << std::endl;
 
-  std::cout << "Verifying dual memory..." << std::flush;
-  if (!Verify(reference, memorySplit)) {
-    return 1; 
-  }
-  std::cout << " Done." << std::endl;
-  
   return 0;
 }

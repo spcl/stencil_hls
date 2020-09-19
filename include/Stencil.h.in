@@ -1,18 +1,16 @@
 /// @author    Johannes de Fine Licht (definelicht@inf.ethz.ch)
-/// @copyright This software is copyrighted under the BSD 3-Clause License. 
+/// @copyright This software is copyrighted under the BSD 3-Clause License.
 
 #pragma once
 
-#include <cstddef>
 #include <ap_int.h>
 #include <hls_half.h>
 #include <hlslib/xilinx/DataPack.h>
+#include <cstddef>
 
 using Data_t = ${STENCIL_DATA_TYPE};
 
-constexpr long kTimeTotal = ${STENCIL_TIME};
 constexpr long kDepth = ${STENCIL_DEPTH};
-constexpr long kTimeFolded = kTimeTotal / kDepth;
 constexpr long kMemoryWidth = ${STENCIL_MEMORY_WIDTH};
 constexpr long kKernelWidth = ${STENCIL_KERNEL_WIDTH};
 constexpr long kKernelPerMemory = kMemoryWidth / kKernelWidth;
@@ -31,7 +29,6 @@ constexpr long kTotalInputMemory =
 constexpr long kTotalInputKernel =
     kRows * (2 * (kBlockWidthKernel + kHaloKernel) +
              (kBlocks - 2) * (kBlockWidthKernel + 2 * kHaloKernel));
-constexpr long kDimms = ${STENCIL_DIMMS_INTERNAL};
 using Kernel_t = hlslib::DataPack<Data_t, kKernelWidth>;
 using Memory_t = hlslib::DataPack<Kernel_t, kKernelPerMemory>;
 constexpr long kPipeDepth = 4;
@@ -43,17 +40,20 @@ const Data_t kBoundary = 1;
 constexpr float kTargetClock = ${STENCIL_TARGET_CLOCK};
 
 #define STENCIL_STRINGIFY(x) #x
-#define STENCIL_MAKE_PRAGMA(var) _Pragma(STENCIL_STRINGIFY(var)) 
-#define STENCIL_RESOURCE_PRAGMA(var, _core) STENCIL_MAKE_PRAGMA(HLS RESOURCE variable=var core=_core)
+#define STENCIL_MAKE_PRAGMA(var) _Pragma(STENCIL_STRINGIFY(var))
+#define STENCIL_RESOURCE_PRAGMA(var, _core) \
+  STENCIL_MAKE_PRAGMA(HLS RESOURCE variable = var core = _core)
 
 #ifdef STENCIL_ADD_CORE
-#define STENCIL_RESOURCE_PRAGMA_ADD(var) STENCIL_RESOURCE_PRAGMA(var, STENCIL_ADD_CORE) 
+#define STENCIL_RESOURCE_PRAGMA_ADD(var) \
+  STENCIL_RESOURCE_PRAGMA(var, STENCIL_ADD_CORE)
 #else
 #define STENCIL_RESOURCE_PRAGMA_ADD(var)
 #endif
 
 #ifdef STENCIL_MULT_CORE
-#define STENCIL_RESOURCE_PRAGMA_MULT(var) STENCIL_RESOURCE_PRAGMA(var, STENCIL_MULT_CORE) 
+#define STENCIL_RESOURCE_PRAGMA_MULT(var) \
+  STENCIL_RESOURCE_PRAGMA(var, STENCIL_MULT_CORE)
 #else
 #define STENCIL_RESOURCE_PRAGMA_MULT(var)
 #endif
@@ -72,14 +72,9 @@ static_assert((kCols / kBlocks) % kKernelWidth == 0,
               "Block width must be divisable my kernel width.");
 static_assert(kMemoryWidth % kKernelWidth == 0,
               "Memory width must be a multiple of the kernel width.");
-static_assert(kTimeTotal % kDepth == 0,
-              "Timesteps must be a multiple of the kernel depth.");
 
 extern "C" {
 
-void Jacobi(Memory_t const *in, Memory_t *out);
-
-void JacobiTwoDimms(Memory_t const *in0, Memory_t *out0,
-                    Memory_t const *in1, Memory_t *out1);
-
+void StencilKernel(Memory_t const *in0, Memory_t *out0, Memory_t const *in1,
+                   Memory_t *out1, int timesteps_folded);
 }
