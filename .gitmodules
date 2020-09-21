@@ -1,0 +1,3 @@
+[submodule "hlslib"]
+	path = hlslib
+	url = git@github.com:definelicht/hlslib.git
