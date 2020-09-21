@@ -9,32 +9,49 @@
 #include "Reference.h"
 #include "Stencil.h"
 #include "hlslib/xilinx/SDAccel.h"
+#include "hlslib/xilinx/Utility.h"
 
 int main(int argc, char **argv) {
-  if (argc < 2 || argc > 3) {
-    std::cerr << "Usage: ./ExecuteKernel <timesteps> [<verify [on/off]>]"
+  if (argc < 3 || argc > 4) {
+    std::cerr << "Usage: ./ExecuteKernel <[hw/hw_emu]> <timesteps> [<verify "
+                 "[on/off]>]"
               << std::endl;
     return 1;
   }
 
-  const auto timesteps = std::stoi(argv[1]);
+  bool is_emulation;
+  std::string path;
+  const std::string mode_arg(argv[1]);
+  if (mode_arg == "hw") {
+    is_emulation = false;
+    path = "Stencil_hw.xclbin";
+  } else if (mode_arg == "hw_emu") {
+    hlslib::SetEnvironmentVariable("XCL_EMULATION_MODE", "hw_emu");
+    path = "Stencil_hw_emu.xclbin";
+    is_emulation = true;
+  } else {
+    std::cerr << "Invalid mode \"" << mode_arg << "\".\n";
+    return 2;
+  }
+
+  const auto timesteps = std::stoi(argv[2]);
   if (timesteps % kDepth != 0) {
     std::cerr << "Number of timesteps (" << timesteps
               << ") must be divisible by depth (" << kDepth << ")\n";
-    return 2;
+    return 3;
   }
   const auto timesteps_folded = timesteps / kDepth;
 
   bool verify = false;
-  if (argc == 3) {
-    if (std::string(argv[2]) == "on") {
+  if (argc == 4) {
+    if (std::string(argv[3]) == "on") {
       verify = true;
-    } else if (std::string(argv[2]) == "off") {
+    } else if (std::string(argv[3]) == "off") {
       verify = false;
     } else {
       std::cerr << "Verify option must be either \"on\" or \"off\"."
                 << std::endl;
-      return 3;
+      return 4;
     }
   }
 
@@ -47,7 +64,7 @@ int main(int argc, char **argv) {
     std::cout << " Done.\n";
 
     std::cout << "Creating program..." << std::flush;
-    auto program = context.MakeProgram(kKernelString + std::string(".xclbin"));
+    auto program = context.MakeProgram(path);
     std::cout << " Done.\n";
 
     std::cout << "Allocating device memory..." << std::flush;

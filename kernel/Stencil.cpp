@@ -210,6 +210,7 @@ void StencilKernel(Memory_t const *in0, Memory_t *out0, Memory_t const *in1,
 #pragma HLS INTERFACE s_axilite port = out0 bundle = control
 #pragma HLS INTERFACE s_axilite port = in1 bundle = control
 #pragma HLS INTERFACE s_axilite port = out1 bundle = control
+#pragma HLS INTERFACE s_axilite port = timesteps_folded bundle = control
 #pragma HLS INTERFACE s_axilite port = return bundle = control
 #pragma HLS DATAFLOW
 
