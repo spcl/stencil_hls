@@ -18,10 +18,11 @@ set(STENCIL_ROWS 8192 CACHE STRING "Number of rows.")
 set(STENCIL_COLS 8192 CACHE STRING "Number of columns.")
 set(STENCIL_TARGET_CLOCK 300 CACHE STRING "Target clock speed.")
 set(STENCIL_TIMING_UNCERTAINTY 1.08 CACHE STRING "Uncertainty on the timing allowed in HLS.")
-set(STENCIL_KEEP_INTERMEDIATE ON CACHE STRING "Keep intermediate Vitis files")
+set(STENCIL_KEEP_INTERMEDIATE ON CACHE BOOL "Keep intermediate Vitis files")
 set(STENCIL_ADD_CORE "FAddSub_fulldsp" CACHE STRING "")                                
 set(STENCIL_MULT_CORE "FMul_fulldsp" CACHE STRING "")  
-set(STENCIL_ENABLE_PROFILING OFF CACHE STRING "Enable SDx profiling")
+set(STENCIL_ENABLE_PROFILING OFF CACHE BOOL "Enable SDx profiling")
+set(STENCIL_ENABLE_DEBUGGING OFF CACHE BOOL "Enable debugging of kernel")
 
 # Internal
 set(STENCIL_KERNEL_NAME "Stencil")
@@ -49,6 +50,9 @@ if(STENCIL_MULT_CORE)
   set(STENCIL_SYNTHESIS_FLAGS "${STENCIL_SYNTHESIS_FLAGS} -DSTENCIL_MULT_CORE=${STENCIL_MULT_CORE}") 
 endif() 
 add_definitions(-DHLSLIB_LEGACY_SDX=0)
+if(STENCIL_ENABLE_DEBUGGING)
+  add_definitions(-DSTENCIL_KERNEL_DEBUG)
+endif()
 
 # Source
 set(STENCIL_KERNEL_SRC
