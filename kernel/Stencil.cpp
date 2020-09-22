@@ -27,12 +27,12 @@ void Compute(hlslib::Stream<Kernel_t> &pipeIn,
   const int output_begin = shrink_output ? 1 : 0;
   const int output_end = shrink_output ? input_width - 1 : input_width;
 
-  hlslib::Stream<Kernel_t, kBlockWidthKernel +
-                               2 * hlslib::CeilDivide(kDepth, kKernelWidth)>
-      northBuffer("northBuffer");
-  hlslib::Stream<Kernel_t, kBlockWidthKernel +
-                               2 * hlslib::CeilDivide(kDepth, kKernelWidth)>
-      centerBuffer("centerBuffer");
+  constexpr auto kLineWidth =
+      kBlockWidthKernel + 2 * hlslib::CeilDivide(kDepth, kKernelWidth);
+
+  Kernel_t northBuffer[kLineWidth];
+
+  Kernel_t centerBuffer[kLineWidth];
 
   int t = 0;
   int b = 0;
@@ -52,7 +52,7 @@ ComputeFlat:
     std::stringstream debugStream;
     debugStream << "Stage " << stage << ": (" << t << ", " << b << ", " << r
                 << ", " << c - boundary_width << "): ";
-    bool debugCond = stage == 0 && r == 0 && c - boundary_width == 0 && b == 0;
+    bool debugCond = true;
 #endif
 
     const bool isSaturating = i < input_width - 1;  // Shift right by one
@@ -69,12 +69,9 @@ ComputeFlat:
       } else {
         read = Kernel_t(kBoundary);
       }
-      centerBuffer.WriteOptimistic(read, input_width);
+      centerBuffer[i + inner_begin] = read;
 #ifdef STENCIL_KERNEL_DEBUG
       debugStream << "saturating " << read << "\n";
-      if (debugCond) {
-        std::cout << debugStream.str();
-      }
 #endif
     } else {  // Use else instead of continue or the whole pipeline breaks...
 
@@ -88,15 +85,13 @@ ComputeFlat:
             (b == kBlocks - 1 && c >= inner_end && r < kRows - 1) ||
             (b == kBlocks - 2 && c >= inner_end && r == kRows - 1)) {
           read = Kernel_t(kBoundary);
-
         } else {
           read = pipeIn.Pop();
         }
       }
 
       // Collect vertical values
-      const auto north =
-          (r > 0) ? northBuffer.ReadOptimistic() : Kernel_t(kBoundary);
+      const auto north = (r > 0) ? northBuffer[c] : Kernel_t(kBoundary);
       const auto south = (r < kRows - 1) ? read : Kernel_t(kBoundary);
 
       // Use center value shifted forward to populate bulk of west and east
@@ -106,28 +101,26 @@ ComputeFlat:
       shiftCenter.ShiftTo<1, 0, kKernelWidth - 1>(east);
 
       // Read the next center value to collect the last element of east
-      const auto nextCenter = centerBuffer.ReadOptimistic();
+      const auto nextCenter = centerBuffer[c < input_width - 1 ? (c + 1) : 0];
       east[kKernelWidth - 1] = nextCenter[0];
 
       // We shifted the last element of west forward from last iteration
       west[0] = shiftWest;
 
       // Now update the line buffers
-      if (!isDraining) {
-        centerBuffer.WriteOptimistic(read, input_width);
-        if (r < kRows - 1) {
-          northBuffer.WriteOptimistic(shiftCenter);
-        }
-      }
+      centerBuffer[c] = read;
+#pragma HLS DEPENDENCE variable = centerBuffer false
+      northBuffer[c] = shiftCenter;
+#pragma HLS DEPENDENCE variable = northBuffer false
+
+#ifdef STENCIL_KERNEL_DEBUG
+      debugStream << "N" << north << ", W" << west << ", C" << shiftCenter
+                  << ", E" << east << ", S" << south;
+#endif
 
       // Values have been consumed, so shift all center registers left
       shiftWest = shiftCenter[kKernelWidth - 1];
       shiftCenter = nextCenter;
-
-#ifdef STENCIL_KERNEL_DEBUG
-      debugStream << "N" << north << ", W" << west << ", E" << east << ", S"
-                  << south;
-#endif
 
       // Now we can perform the actual compute
       Kernel_t result;
@@ -173,12 +166,6 @@ ComputeFlat:
 #endif
       }
 
-#ifdef STENCIL_KERNEL_DEBUG
-      if (debugCond) {
-        std::cout << debugStream.str();
-      }
-#endif
-
       // Index calculations
       if (c == input_width - 1) {
         c = 0;
@@ -197,6 +184,12 @@ ComputeFlat:
         ++c;
       }
     }
+
+#ifdef STENCIL_KERNEL_DEBUG
+    if (debugCond) {
+      std::cout << debugStream.str();
+    }
+#endif
   }
 }
 
