@@ -58,18 +58,26 @@ int main(int argc, char **argv) {
   }
   const auto timesteps_folded = timesteps / kDepth;
 
+  std::vector<Data_t> input(kRows * kCols, 0);
+
   std::cout << "Running reference implementation..." << std::flush;
-  const auto reference =
-      Reference(std::vector<Data_t>(kRows * kCols, 0), timesteps);
+  const auto reference = Reference(input, timesteps);
   std::cout << " Done." << std::endl;
 
   std::cout << "Initializing memory..." << std::flush;
   std::vector<Memory_t> memorySplit(2 * kTotalElementsMemory,
                                     Kernel_t(Data_t(static_cast<Data_t>(0))));
-  std::vector<Memory_t> memorySplit0(kTotalElementsMemory,
-                                     Kernel_t(Data_t(static_cast<Data_t>(0))));
-  std::vector<Memory_t> memorySplit1(kTotalElementsMemory,
-                                     Kernel_t(Data_t(static_cast<Data_t>(0))));
+  std::memcpy(&memorySplit[0], &input[0], kRows * kCols * sizeof(Data_t));
+  std::vector<Memory_t> memorySplit0(kTotalElementsMemory);
+  std::vector<Memory_t> memorySplit1(kTotalElementsMemory);
+  for (int r = 0; r < kRows; ++r) {
+    for (int c = 0; c < kCols / kMemoryWidth; ++c) {
+      constexpr auto kMemoryCols = kCols / kMemoryWidth;
+      memorySplit0[r * kMemoryCols + c] = memorySplit[2 * r * kMemoryCols + c];
+      memorySplit1[r * kMemoryCols + c] =
+          memorySplit[(2 * r + 1) * kMemoryCols + c];
+    }
+  }
   std::cout << " Done." << std::endl;
 
   std::cout << "Running simulation..." << std::flush;
