@@ -34,13 +34,13 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  const auto timesteps = std::stoi(argv[2]);
+  const int timesteps = std::stoi(argv[2]);
   if (timesteps % kDepth != 0) {
     std::cerr << "Number of timesteps (" << timesteps
               << ") must be divisible by depth (" << kDepth << ")\n";
     return 3;
   }
-  const auto timesteps_folded = timesteps / kDepth;
+  const int timesteps_folded = timesteps / kDepth;
 
   bool verify = false;
   if (argc == 4) {
