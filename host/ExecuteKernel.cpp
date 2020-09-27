@@ -86,8 +86,9 @@ int main(int argc, char **argv) {
     }
 
     std::cout << "Creating kernel..." << std::flush;
-    auto kernel = program.MakeKernel(StencilKernel, "StencilKernel", device0,
-                                     device0, device1, device1, timesteps);
+    auto kernel =
+        program.MakeKernel(StencilKernel, "StencilKernel", device0, device0,
+                           device1, device1, timesteps_folded);
     std::cout << " Done." << std::endl;
 
     const auto readSize = static_cast<float>(timesteps_folded) *
