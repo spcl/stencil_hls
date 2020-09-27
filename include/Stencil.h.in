@@ -40,7 +40,7 @@ constexpr float kTargetClock = ${STENCIL_TARGET_CLOCK};
 #define STENCIL_STRINGIFY(x) #x
 #define STENCIL_MAKE_PRAGMA(var) _Pragma(STENCIL_STRINGIFY(var))
 #define STENCIL_RESOURCE_PRAGMA(var, _core) \
-  STENCIL_MAKE_PRAGMA(HLS RESOURCE variable = var core = _core)
+  STENCIL_MAKE_PRAGMA(HLS RESOURCE variable=var core=_core)
 
 #ifdef STENCIL_ADD_CORE
 #define STENCIL_RESOURCE_PRAGMA_ADD(var) \
